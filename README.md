@@ -42,6 +42,14 @@ running:
 sudo apt install libchromaprint-utils
 ```
 
+## Performance
+
+Performance is extremely dependent on the `-length` flag's value.
+
+On a laptop with an Intel Core i5-8250U CPU 1.60GHz processor, `fpcalc` takes
+about 10 seconds to scan 99 MP3 and WAV files totalling 266 MB using the default
+flags.
+
 When running against a large music collection, the `-db` flag can be passed to
 save fingerprints and other file information for future runs. Note that the
 database will not be reusable if you pass different `-algorithm`, `-chunk`,
