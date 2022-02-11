@@ -69,7 +69,19 @@ func main() {
 			}
 		}()
 
-		scanFiles(opts, db, fps)
+		groups, err := scanFiles(opts, db, fps)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Failed scanning files:", err)
+			return 1
+		}
+		for i, group := range groups {
+			if i != 0 {
+				fmt.Println()
+			}
+			for _, p := range group {
+				fmt.Println(filepath.Join(opts.dir, p))
+			}
+		}
 
 		return 0
 	}())
@@ -88,9 +100,10 @@ func defaultScanOptions() *scanOptions {
 		// TODO: I'm just guessing what should be included here. See
 		// https://en.wikipedia.org/wiki/Audio_file_format#List_of_formats and
 		// https://en.wikipedia.org/wiki/FFmpeg#Supported_codecs_and_formats.
-		fileString:   `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
-		bits:         20,
-		lookupThresh: 0.5,
+		fileString: `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
+		bits:       20,
+		// TODO: I have no idea what this should be.
+		lookupThresh: 0.25,
 	}
 }
 
@@ -110,10 +123,11 @@ func (o *scanOptions) finish() error {
 	return nil
 }
 
-func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) error {
+func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]string, error) {
 	lookup := newLookupTable()
+	edges := make(map[fileID][]fileID)
 
-	return filepath.Walk(opts.dir, func(p string, fi os.FileInfo, err error) error {
+	if err := filepath.Walk(opts.dir, func(p string, fi os.FileInfo, err error) error {
 		if p == opts.dir || fi.IsDir() || !opts.fileRegexp.MatchString(filepath.Base(p)) {
 			return nil
 		}
@@ -132,16 +146,56 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) error {
 			}
 		}
 
-		// TODO: Make the threshold configurable.
-		for _, oid := range lookup.find(fprint, len(fprint)/2) {
-			op, err := db.path(oid)
-			if err != nil {
-				return fmt.Errorf("getting path for %d: %v", oid, err)
-			}
-			fmt.Printf("%s: %s\n", rel, op)
+		// TODO: This probably produces lots of false positives.
+		// I should probably do additional comparisons using the full fingerprints.
+		thresh := int(float64(len(fprint)) * opts.lookupThresh)
+		for _, oid := range lookup.find(fprint, thresh) {
+			edges[id] = append(edges[id], oid)
+			edges[oid] = append(edges[oid], id)
 		}
-		lookup.add(id, fprint)
 
+		lookup.add(id, fprint)
 		return nil
-	})
+	}); err != nil {
+		return nil, err
+	}
+
+	var err error
+	var groups [][]string
+	for _, comp := range components(edges) {
+		group := make([]string, len(comp))
+		for i, id := range comp {
+			if group[i], err = db.path(id); err != nil {
+				return nil, fmt.Errorf("getting path for %d: %v", id, err)
+			}
+		}
+		groups = append(groups, group)
+	}
+	return groups, nil
+}
+
+// components returns all components from the undirected graph described by edges.
+func components(edges map[fileID][]fileID) [][]fileID {
+	visited := make(map[fileID]struct{})
+
+	var search func(fileID) []fileID
+	search = func(src fileID) []fileID {
+		if _, ok := visited[src]; ok {
+			return nil
+		}
+		visited[src] = struct{}{}
+		comp := []fileID{src}
+		for _, dst := range edges[src] {
+			comp = append(comp, search(dst)...)
+		}
+		return comp
+	}
+
+	var comps [][]fileID
+	for src := range edges {
+		if _, ok := visited[src]; !ok {
+			comps = append(comps, search(src))
+		}
+	}
+	return comps
 }
