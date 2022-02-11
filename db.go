@@ -64,34 +64,36 @@ func newAudioDB(path string, settings *fpcalcSettings) (*audioDB, error) {
 
 func (adb *audioDB) close() error { return adb.db.Close() }
 
-// get returns the saved fingerprint corresponding to the file at path.
-// If the file is not present in the database, a nil slice is returned.
-func (adb *audioDB) get(path string) ([]uint32, error) {
+// get returns the ID and saved fingerprint corresponding to the file at path.
+// If the file is not present in the database, 0 and a nil slice are returned.
+func (adb *audioDB) get(path string) (id int64, fprint []uint32, err error) {
+	// ROWID is automatically assigned by SQLite: https://www.sqlite.org/autoinc.html
+	row := adb.db.QueryRow(`SELECT ROWID, Fingerprint FROM Files WHERE Path = ?`, path)
 	var b []byte
-	row := adb.db.QueryRow(`SELECT Fingerprint FROM Files WHERE Path = ?`, path)
-	if err := row.Scan(&b); err == sql.ErrNoRows {
-		return nil, nil
+	if err := row.Scan(&id, &b); err == sql.ErrNoRows {
+		return 0, nil, nil
 	} else if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	if len(b)%4 != 0 {
-		return nil, fmt.Errorf("invalid fingerprint size %v", len(b))
+		return 0, nil, fmt.Errorf("invalid fingerprint size %v", len(b))
 	}
-	var fprint []uint32
 	for i := 0; i < len(b); i += 4 {
 		fprint = append(fprint, dbByteOrder.Uint32(b[i:i+4]))
 	}
-	return fprint, nil
+	return id, fprint, nil
 }
 
 // save saves the supplied fingerprint for the file at path.
-// If a fingerprint already exists, it is replaced.
-func (adb *audioDB) save(path string, fprint []uint32) error {
+func (adb *audioDB) save(path string, fprint []uint32) (id int64, err error) {
 	var b bytes.Buffer
 	if err := binary.Write(&b, dbByteOrder, fprint); err != nil {
-		return err
+		return 0, err
 	}
-	_, err := adb.db.Exec(`INSERT OR REPLACE INTO Files (Path, Fingerprint) VALUES(?, ?)`, path, b.Bytes())
-	return err
+	res, err := adb.db.Exec(`INSERT INTO Files (Path, Fingerprint) VALUES(?, ?)`, path, b.Bytes())
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }

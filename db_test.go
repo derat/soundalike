@@ -50,7 +50,8 @@ func TestAudioDB_Save_Get(t *testing.T) {
 		2926578470, 2867858726, 2861565230, 2860515614, 3128963150, 3128959069, 3145753692,
 		2676026452, 2642712788, 2512685268, 2504820948, 3041773748, 2970273957, 2971326631,
 	}
-	if err := db.save(file, fprint); err != nil {
+	id, err := db.save(file, fprint)
+	if err != nil {
 		db.close()
 		t.Fatalf("save(%q, ...) failed: %v", file, err)
 	}
@@ -63,28 +64,22 @@ func TestAudioDB_Save_Get(t *testing.T) {
 		t.Fatal("newAudioDB failed: ", err)
 	}
 	defer db.close()
-	got, err := db.get(file)
-	if err != nil {
+	if gotID, gotFprint, err := db.get(file); err != nil {
 		t.Errorf("get(%q) failed: %v", file, err)
-	} else if !reflect.DeepEqual(got, fprint) {
-		t.Errorf("get(%q) returned wrong fingerprint", file)
-	}
-
-	// Update the fingerprint.
-	fprint2 := fprint[:10]
-	if err := db.save(file, fprint2); err != nil {
-		t.Errorf("save(%q, ...) failed: %v", file, err)
-	} else if got, err := db.get(file); err != nil {
-		t.Errorf("get(%q) failed: %v", file, err)
-	} else if !reflect.DeepEqual(got, fprint2) {
-		t.Errorf("get(%q) returned wrong fingerprint", file)
+	} else {
+		if gotID != id {
+			t.Errorf("get(%q) returned ID %v; want %v", file, gotID, id)
+		}
+		if !reflect.DeepEqual(gotFprint, fprint) {
+			t.Errorf("get(%q) returned wrong fingerprint", file)
+		}
 	}
 
 	// Check that nil is returned for missing fingerprints.
 	const file2 = "some-other-song.mp3"
-	if got, err := db.get(file2); err != nil {
+	if gotID, gotFprint, err := db.get(file2); err != nil {
 		t.Errorf("get(%q) failed: %v", file2, err)
-	} else if got != nil {
-		t.Errorf("get(%q) = %v; want nil", file2, got)
+	} else if gotID != 0 || gotFprint != nil {
+		t.Errorf("get(%q) = (%v, %v); want (0, nil)", file2, gotID, gotFprint)
 	}
 }

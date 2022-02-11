@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,18 +18,19 @@ func main() {
 			"Finds duplicate audio files in a directory tree.\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}
-	settings := defaultFpcalcSettings()
-	flag.IntVar(&settings.algorithm, "algorithm", settings.algorithm, `Fingerprint algorithm (fpcalc -algorithm flag)`)
-	bits := flag.Int("bits", 20, "Fingerprint bits to use (max is 32)")
-	flag.Float64Var(&settings.chunk, "chunk", settings.chunk, `Audio chunk duration (fpcalc -chunk flag)`)
-	dbPath := flag.String("db", "", `SQLite database file for storing fingerprints`)
+	fps := defaultFpcalcSettings()
+	opts := scanOptions{bits: 20}
+	flag.IntVar(&fps.algorithm, "algorithm", fps.algorithm, `Fingerprint algorithm (fpcalc -algorithm flag)`)
+	flag.IntVar(&opts.bits, "bits", opts.bits, "Fingerprint bits to use (max is 32)")
+	flag.Float64Var(&fps.chunk, "chunk", fps.chunk, `Audio chunk duration (fpcalc -chunk flag)`)
+	dbPath := flag.String("db", "", `SQLite database file for storing fingerprints (empty for temp file)`)
 	// TODO: I'm just guessing what should be included here. See
 	// https://en.wikipedia.org/wiki/Audio_file_format#List_of_formats and
 	// https://en.wikipedia.org/wiki/FFmpeg#Supported_codecs_and_formats.
 	fileRegexp := flag.String("file-regexp", `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
 		"Case-insensitive regular expression for audio files")
-	flag.Float64Var(&settings.length, "length", settings.length, `Max audio duration to process (fpcalc -length flag)`)
-	flag.BoolVar(&settings.overlap, "overlap", settings.overlap, `Overlap audio chunks (fpcalc -overlap flag)`)
+	flag.Float64Var(&fps.length, "length", fps.length, `Max audio duration to process (fpcalc -length flag)`)
+	flag.BoolVar(&fps.overlap, "overlap", fps.overlap, `Overlap audio chunks (fpcalc -overlap flag)`)
 	flag.Parse()
 
 	os.Exit(func() int {
@@ -46,12 +48,12 @@ func main() {
 			return 1
 		}
 
-		if *bits < 1 || *bits > 32 {
+		if opts.bits < 1 || opts.bits > 32 {
 			fmt.Fprintln(os.Stderr, "-bits must be in the range [1, 32]")
 			return 2
 		}
-		re, err := regexp.Compile(*fileRegexp)
-		if err != nil {
+		var err error
+		if opts.re, err = regexp.Compile(*fileRegexp); err != nil {
 			fmt.Fprintln(os.Stderr, "-file-regexp invalid:", err)
 			return 2
 		}
@@ -61,60 +63,78 @@ func main() {
 			return 1
 		}
 
-		var db *audioDB
-		if *dbPath != "" {
-			var err error
-			if db, err = newAudioDB(*dbPath, settings); err != nil {
-				fmt.Fprintln(os.Stderr, "Failed opening database:", err)
+		if *dbPath == "" {
+			f, err := ioutil.TempFile("", "soundalike.db.*")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Failed creating temp file for database:", err)
 				return 1
 			}
-			defer func() {
-				if err := db.close(); err != nil {
-					fmt.Fprintln(os.Stderr, "Failed closing database:", err)
-				}
-			}()
+			f.Close()
+			*dbPath = f.Name()
+			defer os.Remove(*dbPath)
 		}
+		db, err := newAudioDB(*dbPath, fps)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Failed opening database:", err)
+			return 1
+		}
+		defer func() {
+			if err := db.close(); err != nil {
+				fmt.Fprintln(os.Stderr, "Failed closing database:", err)
+			}
+		}()
 
-		processFiles(dir, re, *bits, settings, db)
+		scanFiles(dir, &opts, db, fps)
 
 		return 0
 	}())
 }
 
-func processFiles(dir string, re *regexp.Regexp, bits int, settings *fpcalcSettings, db *audioDB) error {
-	if err := filepath.Walk(dir, func(p string, fi os.FileInfo, err error) error {
-		if p == dir || fi.IsDir() || !re.MatchString(filepath.Base(p)) {
+type scanOptions struct {
+	re   *regexp.Regexp
+	bits int
+}
+
+func scanFiles(dir string, opts *scanOptions, db *audioDB, fps *fpcalcSettings) error {
+	lookup := make(map[uint32][]int64) // truncated fingerprint values to file IDs
+
+	return filepath.Walk(dir, func(p string, fi os.FileInfo, err error) error {
+		if p == dir || fi.IsDir() || !opts.re.MatchString(filepath.Base(p)) {
 			return nil
 		}
 
 		rel := p[len(dir)+1:]
-		var fprint []uint32
-		if db != nil {
-			if fprint, err = db.get(rel); err != nil {
-				return err
-			}
+		id, fprint, err := db.get(rel)
+		if err != nil {
+			return err
 		}
 		if fprint == nil {
-			if fprint, err = runFpcalc(p, settings); err != nil {
+			if fprint, err = runFpcalc(p, fps); err != nil {
 				return err
 			}
-		}
-		if db != nil {
-			if err := db.save(rel, fprint); err != nil {
+			if id, err = db.save(rel, fprint); err != nil {
 				return err
 			}
 		}
 
-		fprint = fprint[:bits]
+		hits := make(map[int64]int) // file ID to number of matching truncated values
 
-		// TODO: Save fingerprint for later lookup.
+		// TODO: Handle duplicate entries?
+		for _, v := range fprint {
+			key := v >> (32 - opts.bits)
+			ids := lookup[key]
+			for _, oid := range ids {
+				if oid != id {
+					hits[oid]++
+				}
+			}
+			lookup[key] = append(ids, id)
+		}
+
+		for oid, cnt := range hits {
+			fmt.Printf("%d: %d (%d/%d)\n", id, oid, cnt, len(fprint))
+		}
 
 		return nil
-	}); err != nil {
-		return err
-	}
-
-	// TODO: Find duplicates.
-
-	return nil
+	})
 }
