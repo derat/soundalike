@@ -4,13 +4,12 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"regexp"
+	"strconv"
+	"strings"
 )
 
 func main() {
@@ -23,7 +22,6 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.IntVar(&fps.algorithm, "algorithm", fps.algorithm, `Fingerprint algorithm (fpcalc -algorithm flag)`)
-	flag.IntVar(&opts.bits, "bits", opts.bits, "Fingerprint bits to use (max is 32)")
 	flag.Float64Var(&fps.chunk, "chunk", fps.chunk, `Audio chunk duration (fpcalc -chunk flag)`)
 	dbPath := flag.String("db", "", `SQLite database file for storing fingerprints (empty for temp file)`)
 	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Case-insensitive regular expression for audio files")
@@ -74,12 +72,13 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Failed scanning files:", err)
 			return 1
 		}
-		for i, group := range groups {
+
+		for i, infos := range groups {
 			if i != 0 {
 				fmt.Println()
 			}
-			for _, p := range group {
-				fmt.Println(filepath.Join(opts.dir, p))
+			for _, ln := range formatFiles(infos, "") {
+				fmt.Println(ln)
 			}
 		}
 
@@ -87,115 +86,34 @@ func main() {
 	}())
 }
 
-type scanOptions struct {
-	dir          string         // directory containing audio files
-	fileString   string         // uncompiled fileRegexp
-	fileRegexp   *regexp.Regexp // matches files to scan
-	bits         int            // bits to use from 32-bit fingerprint values
-	lookupThresh float64        // match threshold for lookup table in (0.0, 1.0]
-}
-
-func defaultScanOptions() *scanOptions {
-	return &scanOptions{
-		// TODO: I'm just guessing what should be included here. See
-		// https://en.wikipedia.org/wiki/Audio_file_format#List_of_formats and
-		// https://en.wikipedia.org/wiki/FFmpeg#Supported_codecs_and_formats.
-		fileString: `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
-		bits:       20,
-		// TODO: I have no idea what this should be.
-		lookupThresh: 0.25,
-	}
-}
-
-func (o *scanOptions) finish() error {
-	if fi, err := os.Stat(o.dir); err != nil {
-		return err
-	} else if !fi.IsDir() {
-		return fmt.Errorf("%v is not a directory", o.dir)
-	}
-	if o.bits < 1 || o.bits > 32 {
-		return errors.New("bits must be in the range [1, 32]")
-	}
-	var err error
-	if o.fileRegexp, err = regexp.Compile(o.fileString); err != nil {
-		return fmt.Errorf("bad file regexp: %v", err)
-	}
-	return nil
-}
-
-func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]string, error) {
-	lookup := newLookupTable()
-	edges := make(map[fileID][]fileID)
-
-	if err := filepath.Walk(opts.dir, func(p string, fi os.FileInfo, err error) error {
-		if p == opts.dir || fi.IsDir() || !opts.fileRegexp.MatchString(filepath.Base(p)) {
-			return nil
-		}
-
-		rel := p[len(opts.dir)+1:]
-		id, fprint, err := db.get(rel)
-		if err != nil {
-			return err
-		}
-		if fprint == nil {
-			if fprint, err = runFpcalc(p, fps); err != nil {
-				return err
-			}
-			if id, err = db.save(rel, fprint); err != nil {
-				return err
-			}
-		}
-
-		// TODO: This probably produces lots of false positives.
-		// I should probably do additional comparisons using the full fingerprints.
-		thresh := int(float64(len(fprint)) * opts.lookupThresh)
-		for _, oid := range lookup.find(fprint, thresh) {
-			edges[id] = append(edges[id], oid)
-			edges[oid] = append(edges[oid], id)
-		}
-
-		lookup.add(id, fprint)
+func formatFiles(infos []*fileInfo, pathPrefix string) []string {
+	if len(infos) == 0 {
 		return nil
-	}); err != nil {
-		return nil, err
 	}
 
-	var err error
-	var groups [][]string
-	for _, comp := range components(edges) {
-		group := make([]string, len(comp))
-		for i, id := range comp {
-			if group[i], err = db.path(id); err != nil {
-				return nil, fmt.Errorf("getting path for %d: %v", id, err)
+	var rows [][]string
+	lens := make([]int, 3)
+	for _, info := range infos {
+		row := []string{
+			pathPrefix + info.path,
+			strconv.FormatFloat(float64(info.size)/(1024*1024), 'f', 2, 64),
+			strconv.FormatFloat(info.duration, 'f', 2, 64),
+		}
+		rows = append(rows, row)
+		for i, max := range lens {
+			if ln := len(row[i]); ln > max {
+				lens[i] = ln
 			}
 		}
-		groups = append(groups, group)
 	}
-	return groups, nil
-}
-
-// components returns all components from the undirected graph described by edges.
-func components(edges map[fileID][]fileID) [][]fileID {
-	visited := make(map[fileID]struct{})
-
-	var search func(fileID) []fileID
-	search = func(src fileID) []fileID {
-		if _, ok := visited[src]; ok {
-			return nil
-		}
-		visited[src] = struct{}{}
-		comp := []fileID{src}
-		for _, dst := range edges[src] {
-			comp = append(comp, search(dst)...)
-		}
-		return comp
+	lines := make([]string, len(rows))
+	fs := strings.Join([]string{
+		"%" + strconv.Itoa(-lens[0]) + "s",    // path
+		"%" + strconv.Itoa(lens[1]) + "s MB",  // size
+		"%" + strconv.Itoa(lens[2]) + "s sec", // duration
+	}, "  ")
+	for i, row := range rows {
+		lines[i] = fmt.Sprintf(fs, row[0], row[1], row[2])
 	}
-
-	var comps [][]fileID
-	for src := range edges {
-		if _, ok := visited[src]; !ok {
-			comps = append(comps, search(src))
-		}
-	}
-	return comps
+	return lines
 }

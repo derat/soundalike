@@ -37,7 +37,11 @@ func newAudioDB(path string, settings *fpcalcSettings) (*audioDB, error) {
 
 	for _, q := range []string{
 		`CREATE TABLE IF NOT EXISTS Settings (Desc STRING PRIMARY KEY NOT NULL)`,
-		`CREATE TABLE IF NOT EXISTS Files (Path STRING PRIMARY KEY NOT NULL, Fingerprint BLOB)`,
+		`CREATE TABLE IF NOT EXISTS Files (
+			Path STRING PRIMARY KEY NOT NULL,
+			Duration FLOAT NOT NULL,
+			Size INTEGER NOT NULL,
+			Fingerprint BLOB NOT NULL)`,
 	} {
 		if _, err = db.Exec(q); err != nil {
 			return nil, err
@@ -68,34 +72,54 @@ func (adb *audioDB) close() error { return adb.db.Close() }
 // fileID uniquely identifies a file in audioDB.
 type fileID int32
 
-// get returns the ID and saved fingerprint corresponding to the file at path.
-// If the file is not present in the database, 0 and a nil slice are returned.
-func (adb *audioDB) get(path string) (id fileID, fprint []uint32, err error) {
+// fileInfo contains information about a file stored in audioDB.
+type fileInfo struct {
+	id       fileID  // unique ID
+	path     string  // relative to music dir
+	size     int64   // bytes
+	duration float64 // seconds
+	fprint   []uint32
+}
+
+// get returns information about the file with the specified ID or relative path.
+// If the file is not present in the database, nil is returned.
+func (adb *audioDB) get(id fileID, path string) (*fileInfo, error) {
 	// ROWID is automatically assigned by SQLite: https://www.sqlite.org/autoinc.html
-	row := adb.db.QueryRow(`SELECT ROWID, Fingerprint FROM Files WHERE Path = ?`, path)
+	pre := `SELECT ROWID, Path, Size, Duration, Fingerprint FROM Files WHERE `
+	var row *sql.Row
+	if id > 0 {
+		row = adb.db.QueryRow(pre+`ROWID = ?`, id)
+	} else {
+		row = adb.db.QueryRow(pre+`Path = ?`, path)
+	}
+
 	var b []byte
-	if err := row.Scan(&id, &b); err == sql.ErrNoRows {
-		return 0, nil, nil
+	var info fileInfo
+	if err := row.Scan(&info.id, &info.path, &info.size, &info.duration, &b); err == sql.ErrNoRows {
+		return nil, nil
 	} else if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	if len(b)%4 != 0 {
-		return 0, nil, fmt.Errorf("invalid fingerprint size %v", len(b))
+		return nil, fmt.Errorf("invalid fingerprint size %v", len(b))
 	}
+	info.fprint = make([]uint32, 0, len(b)/4)
 	for i := 0; i < len(b); i += 4 {
-		fprint = append(fprint, dbByteOrder.Uint32(b[i:i+4]))
+		info.fprint = append(info.fprint, dbByteOrder.Uint32(b[i:i+4]))
 	}
-	return id, fprint, nil
+	return &info, nil
 }
 
-// save saves the supplied fingerprint for the file at path.
-func (adb *audioDB) save(path string, fprint []uint32) (id fileID, err error) {
+// save saves the supplied file information to the database.
+// info.id is ignored.
+func (adb *audioDB) save(info *fileInfo) (id fileID, err error) {
 	var b bytes.Buffer
-	if err := binary.Write(&b, dbByteOrder, fprint); err != nil {
+	if err := binary.Write(&b, dbByteOrder, info.fprint); err != nil {
 		return 0, err
 	}
-	res, err := adb.db.Exec(`INSERT INTO Files (Path, Fingerprint) VALUES(?, ?)`, path, b.Bytes())
+	res, err := adb.db.Exec(`INSERT INTO Files (Path, Size, Duration, Fingerprint) VALUES(?, ?, ?, ?)`,
+		info.path, info.size, info.duration, b.Bytes())
 	if err != nil {
 		return 0, err
 	}
@@ -109,11 +133,4 @@ func (adb *audioDB) save(path string, fprint []uint32) (id fileID, err error) {
 		return 0, fmt.Errorf("invalid id %v", id64)
 	}
 	return fileID(id64), nil
-}
-
-// path returns the path of the file with the specified ID.
-func (adb *audioDB) path(id fileID) (path string, err error) {
-	row := adb.db.QueryRow(`SELECT Path FROM Files WHERE ROWID = ?`, int64(id))
-	err = row.Scan(&path)
-	return path, err
 }

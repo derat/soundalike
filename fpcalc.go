@@ -4,11 +4,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"math"
 	"os/exec"
 	"strconv"
-	"strings"
 )
 
 // fpcalcSettings contains command-line settings for the fpcalc utility.
@@ -39,11 +38,17 @@ func haveFpcalc() bool {
 	return err == nil
 }
 
+// fpcalcResult contains the result of running fpcalc against a file.
+type fpcalcResult struct {
+	Fingerprint []uint32 `json:"fingerprint"`
+	Duration    float64  `json:"duration"`
+}
+
 // runFpcalc runs fpcalc to compute a fingerprint for path per settings.
-func runFpcalc(path string, settings *fpcalcSettings) ([]uint32, error) {
+func runFpcalc(path string, settings *fpcalcSettings) (*fpcalcResult, error) {
 	args := []string{
 		"-raw",
-		"-plain",
+		"-json",
 		"-length", strconv.FormatFloat(settings.length, 'f', 3, 64),
 		"-algorithm", strconv.Itoa(settings.algorithm),
 	}
@@ -59,17 +64,9 @@ func runFpcalc(path string, settings *fpcalcSettings) ([]uint32, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	var fprint []uint32
-	for _, s := range strings.Split(strings.TrimSpace(string(out)), ",") {
-		v, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		if v < 0 || v > math.MaxUint32 {
-			return nil, fmt.Errorf("non-uint32 value %v", v)
-		}
-		fprint = append(fprint, uint32(v))
+	var res fpcalcResult
+	if err := json.Unmarshal(out, &res); err != nil {
+		return nil, err
 	}
-	return fprint, nil
+	return &res, nil
 }
