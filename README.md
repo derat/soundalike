@@ -38,6 +38,8 @@ Finds duplicate audio files within a directory.
         Print file sizes and durations (default true)
   -print-full-paths
         Print absolute file paths (rather than relative to dir)
+  -skip-bad-files
+        Skip files that can't be fingerprinted by fpcalc (default true)
 ```
 
 `fpcalc` must be in your path. On a Debian system, it can be installed by

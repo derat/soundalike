@@ -21,6 +21,7 @@ type scanOptions struct {
 	fileRegexp   *regexp.Regexp // matches files to scan
 	logSec       int            // logging frequency
 	lookupThresh float64        // match threshold for lookup table in (0.0, 1.0]
+	skipBadFiles bool           // skip files that can't be fingerprinted by fpcalc
 }
 
 func defaultScanOptions() *scanOptions {
@@ -32,6 +33,7 @@ func defaultScanOptions() *scanOptions {
 		logSec:     10,
 		// TODO: I have no idea what this should be.
 		lookupThresh: 0.25,
+		skipBadFiles: true,
 	}
 }
 
@@ -71,7 +73,11 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			finfo, err := runFpcalc(p, fps)
 			if err != nil {
 				if exit, ok := err.(*exec.ExitError); ok {
-					return fmt.Errorf("%q: %v (%q)", p, err, string(exit.Stderr))
+					err = fmt.Errorf("%q: %v (%q)", p, err, string(exit.Stderr))
+				}
+				if opts.skipBadFiles {
+					log.Print("Skipping bad file:", err)
+					return nil
 				}
 				return err
 			}

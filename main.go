@@ -31,6 +31,7 @@ func main() {
 	flag.BoolVar(&fps.overlap, "overlap", fps.overlap, `Overlap audio chunks (fpcalc -overlap flag)`)
 	printFileInfo := flag.Bool("print-file-info", true, `Print file sizes and durations`)
 	printFullPaths := flag.Bool("print-full-paths", false, `Print absolute file paths (rather than relative to dir)`)
+	flag.BoolVar(&opts.skipBadFiles, "skip-bad-files", true, `Skip files that can't be fingerprinted by fpcalc`)
 	flag.Parse()
 
 	os.Exit(func() int {
