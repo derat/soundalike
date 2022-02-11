@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -69,6 +70,9 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 		} else if info == nil {
 			finfo, err := runFpcalc(p, fps)
 			if err != nil {
+				if exit, ok := err.(*exec.ExitError); ok {
+					return fmt.Errorf("%v (%q)", err, string(exit.Stderr))
+				}
 				return err
 			}
 			info = &fileInfo{
