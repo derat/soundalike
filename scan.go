@@ -71,7 +71,7 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			finfo, err := runFpcalc(p, fps)
 			if err != nil {
 				if exit, ok := err.(*exec.ExitError); ok {
-					return fmt.Errorf("%v (%q)", err, string(exit.Stderr))
+					return fmt.Errorf("%q: %v (%q)", p, err, string(exit.Stderr))
 				}
 				return err
 			}
