@@ -1,26 +1,29 @@
 # soundalike
 
-`soundalike` is a command-line program written in Go that tries to find
-duplicate songs in a music collection by comparing acoustic fingerprints.
-Fingerprints are generated using the `fpcalc` utility from the the [Chromaprint]
-library.
+`soundalike` is a Go command-line program that tries to find similar audio files
+by comparing acoustic fingerprints.
+
+Fingerprints are generated using the `fpcalc` utility from the [Chromaprint]
+library. No network requests are made to [AcoustID] or other APIs.
 
 [Chromaprint]: https://github.com/acoustid/chromaprint
+[AcoustID]: https://acoustid.org/
 
 ## Usage
 
+`soundalike` scans all of the audio files that it finds in the supplied
+directory and then prints groups of similar files.
+
 ```
 Usage soundalike: [flag]... <DIR>
-Finds duplicate audio files in a directory tree.
+Finds duplicate audio files within a directory.
 
   -algorithm int
         Fingerprint algorithm (fpcalc -algorithm flag) (default 2)
-  -bits int
-        Fingerprint bits to use (max is 32) (default 20)
   -chunk float
         Audio chunk duration (fpcalc -chunk flag)
   -db string
-        SQLite database file for storing fingerprints (empty for temp file)
+        SQLite database file for storing file info (empty for temp file)
   -file-regexp string
         Case-insensitive regular expression for audio files (default "\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
   -length float
@@ -29,17 +32,31 @@ Finds duplicate audio files in a directory tree.
         Match threshold for lookup table in (0.0, 1.0] (default 0.25)
   -overlap
         Overlap audio chunks (fpcalc -overlap flag)
+  -print-full-paths
+        Print absolute file paths (rather than relative to dir)
 ```
 
-`fpcalc` must be in your path. On Debian systems, it can be installed by running
+`fpcalc` must be in your path. On a Debian system, it can be installed by
+running:
 ```
 sudo apt install libchromaprint-utils
 ```
 
-## More info
+When running against a large music collection, the `-db` flag can be passed to
+save fingerprints and other file information for future runs. Note that the
+database will not be reusable if you pass different `-algorithm`, `-chunk`,
+`-length`, or `-overlap` flags in the future.
 
-The following pages contain background information that may be of interest:
+## More information
+
+The following pages contain additional technical details that may be of
+interest:
 
 *   [Acoustid's Chromaprint page](https://acoustid.org/chromaprint)
 *   [Lukáš Lalinský's "How does Chromaprint work?" post](https://oxygene.sk/2011/01/how-does-chromaprint-work/)
-*   [This "question about using chromaprint to identify the same tracks" thread from the Acoustid mailing list](https://groups.google.com/g/acoustid/c/C3EHIkZVpZI/m/Zd2qdOKRNzkJ)
+*   ["question about using chromaprint to identify the same tracks" from Acoustid mailing list](https://groups.google.com/g/acoustid/c/C3EHIkZVpZI/m/Zd2qdOKRNzkJ)
+
+See also the [Picard] music tagger from the [MusicBrainz] project.
+
+[Picard]: https://picard.musicbrainz.org/
+[MusicBrainz]: https://musicbrainz.org/

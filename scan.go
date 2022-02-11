@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 // scanOptions contains options for scanFiles.
@@ -30,15 +31,18 @@ func defaultScanOptions() *scanOptions {
 }
 
 func (o *scanOptions) finish() error {
+	o.dir = strings.TrimRight(o.dir, "/")
 	if fi, err := os.Stat(o.dir); err != nil {
 		return err
 	} else if !fi.IsDir() {
 		return fmt.Errorf("%v is not a directory", o.dir)
 	}
+
 	var err error
 	if o.fileRegexp, err = regexp.Compile(o.fileString); err != nil {
 		return fmt.Errorf("bad file regexp: %v", err)
 	}
+
 	return nil
 }
 

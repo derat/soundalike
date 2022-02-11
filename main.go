@@ -18,16 +18,17 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]... <DIR>\n"+
-			"Finds duplicate audio files in a directory tree.\n\n", os.Args[0])
+			"Finds duplicate audio files within a directory.\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.IntVar(&fps.algorithm, "algorithm", fps.algorithm, `Fingerprint algorithm (fpcalc -algorithm flag)`)
 	flag.Float64Var(&fps.chunk, "chunk", fps.chunk, `Audio chunk duration (fpcalc -chunk flag)`)
-	dbPath := flag.String("db", "", `SQLite database file for storing fingerprints (empty for temp file)`)
+	dbPath := flag.String("db", "", `SQLite database file for storing file info (empty for temp file)`)
 	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Case-insensitive regular expression for audio files")
 	flag.Float64Var(&fps.length, "length", fps.length, `Max audio duration to process (fpcalc -length flag)`)
 	flag.Float64Var(&opts.lookupThresh, "lookup-threshold", opts.lookupThresh, `Match threshold for lookup table in (0.0, 1.0]`)
 	flag.BoolVar(&fps.overlap, "overlap", fps.overlap, `Overlap audio chunks (fpcalc -overlap flag)`)
+	fullPaths := flag.Bool("print-full-paths", false, `Print absolute file paths (rather than relative to dir)`)
 	flag.Parse()
 
 	os.Exit(func() int {
@@ -73,11 +74,15 @@ func main() {
 			return 1
 		}
 
+		var pre string
+		if *fullPaths {
+			pre = opts.dir + "/"
+		}
 		for i, infos := range groups {
 			if i != 0 {
 				fmt.Println()
 			}
-			for _, ln := range formatFiles(infos, "") {
+			for _, ln := range formatFiles(infos, pre) {
 				fmt.Println(ln)
 			}
 		}
