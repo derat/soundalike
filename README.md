@@ -24,22 +24,22 @@ directory and then prints groups of similar files.
 Usage soundalike: [flag]... <DIR>
 Finds duplicate audio files within a directory.
 
-  -algorithm int
-        Fingerprint algorithm (fpcalc -algorithm flag) (default 2)
-  -chunk float
-        Audio chunk duration (fpcalc -chunk flag)
   -db string
         SQLite database file for storing file info (empty for temp file)
   -file-regexp string
         Case-insensitive regular expression for audio files (default "\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
-  -length float
-        Max audio duration to process (fpcalc -length flag) (default 15)
+  -fpcalc-algorithm int
+        Fingerprint algorithm (default 2)
+  -fpcalc-chunk float
+        Audio chunk duration in seconds
+  -fpcalc-length float
+        Max audio duration in seconds to process (default 15)
+  -fpcalc-overlap
+        Overlap audio chunks in fingerprints
   -log-sec int
         Logging frequency in seconds (0 or negative to disable logging) (default 10)
   -lookup-threshold float
         Match threshold for lookup table in (0.0, 1.0] (default 0.25)
-  -overlap
-        Overlap audio chunks (fpcalc -overlap flag)
   -print-file-info
         Print file sizes and durations (default true)
   -print-full-paths
@@ -69,9 +69,8 @@ A much slower system with an Intel Celeron 2955U 1.40GHz processor takes roughly
 
 When running against a large music collection, the `-db` flag can be passed to
 save fingerprints and other file information for future runs. Note that the
-database will not be reusable if you pass different `-algorithm`, `-chunk`,
-`-length`, or `-overlap` flags in the future, since those change how `fpcalc`
-computes fingerprints.
+database will not be reusable if you pass different `-fpcalc-*` flags in the
+future, since those change how `fpcalc` computes fingerprints.
 
 ## Memory usage
 
