@@ -5,10 +5,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // scanOptions contains options for scanFiles.
@@ -16,6 +18,7 @@ type scanOptions struct {
 	dir          string         // directory containing audio files
 	fileString   string         // uncompiled fileRegexp
 	fileRegexp   *regexp.Regexp // matches files to scan
+	logSec       int            // logging frequency
 	lookupThresh float64        // match threshold for lookup table in (0.0, 1.0]
 }
 
@@ -25,6 +28,7 @@ func defaultScanOptions() *scanOptions {
 		// https://en.wikipedia.org/wiki/Audio_file_format#List_of_formats and
 		// https://en.wikipedia.org/wiki/FFmpeg#Supported_codecs_and_formats.
 		fileString: `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
+		logSec:     10,
 		// TODO: I have no idea what this should be.
 		lookupThresh: 0.25,
 	}
@@ -51,6 +55,8 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 	lookup := newLookupTable()
 	edges := make(map[fileID][]fileID)
 
+	lastLog := time.Now()
+	var scanned int
 	if err := filepath.Walk(opts.dir, func(p string, fi os.FileInfo, err error) error {
 		if p == opts.dir || fi.IsDir() || !opts.fileRegexp.MatchString(filepath.Base(p)) {
 			return nil
@@ -85,9 +91,20 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 		}
 
 		lookup.add(info.id, info.fprint)
+
+		scanned++
+		if opts.logSec > 0 && time.Now().Sub(lastLog).Seconds() >= float64(opts.logSec) {
+			log.Printf("Scanned %d files", scanned)
+			lastLog = time.Now()
+		}
+
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+
+	if opts.logSec > 0 {
+		log.Printf("Finished scanning %d files", scanned)
 	}
 
 	var groups [][]*fileInfo

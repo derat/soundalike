@@ -28,10 +28,14 @@ Finds duplicate audio files within a directory.
         Case-insensitive regular expression for audio files (default "\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
   -length float
         Max audio duration to process (fpcalc -length flag) (default 15)
+  -log-sec int
+        Logging frequency in seconds (0 or negative to disable logging) (default 10)
   -lookup-threshold float
         Match threshold for lookup table in (0.0, 1.0] (default 0.25)
   -overlap
         Overlap audio chunks (fpcalc -overlap flag)
+  -print-file-info
+        Print file sizes and durations (default true)
   -print-full-paths
         Print absolute file paths (rather than relative to dir)
 ```

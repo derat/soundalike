@@ -26,9 +26,11 @@ func main() {
 	dbPath := flag.String("db", "", `SQLite database file for storing file info (empty for temp file)`)
 	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Case-insensitive regular expression for audio files")
 	flag.Float64Var(&fps.length, "length", fps.length, `Max audio duration to process (fpcalc -length flag)`)
+	flag.IntVar(&opts.logSec, "log-sec", opts.logSec, `Logging frequency in seconds (0 or negative to disable logging)`)
 	flag.Float64Var(&opts.lookupThresh, "lookup-threshold", opts.lookupThresh, `Match threshold for lookup table in (0.0, 1.0]`)
 	flag.BoolVar(&fps.overlap, "overlap", fps.overlap, `Overlap audio chunks (fpcalc -overlap flag)`)
-	fullPaths := flag.Bool("print-full-paths", false, `Print absolute file paths (rather than relative to dir)`)
+	printFileInfo := flag.Bool("print-file-info", true, `Print file sizes and durations`)
+	printFullPaths := flag.Bool("print-full-paths", false, `Print absolute file paths (rather than relative to dir)`)
 	flag.Parse()
 
 	os.Exit(func() int {
@@ -75,15 +77,21 @@ func main() {
 		}
 
 		var pre string
-		if *fullPaths {
+		if *printFullPaths {
 			pre = opts.dir + "/"
 		}
 		for i, infos := range groups {
 			if i != 0 {
 				fmt.Println()
 			}
-			for _, ln := range formatFiles(infos, pre) {
-				fmt.Println(ln)
+			if *printFileInfo {
+				for _, ln := range formatFiles(infos, pre) {
+					fmt.Println(ln)
+				}
+			} else {
+				for _, info := range infos {
+					fmt.Println(pre + info.path)
+				}
 			}
 		}
 
