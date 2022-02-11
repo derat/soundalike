@@ -96,7 +96,8 @@ type scanOptions struct {
 }
 
 func scanFiles(dir string, opts *scanOptions, db *audioDB, fps *fpcalcSettings) error {
-	lookup := make(map[uint32][]int64) // truncated fingerprint values to file IDs
+	type trunc uint16                          // truncated value from fingerprint
+	lookup := make(map[trunc]map[fileID]int16) // value counts in files
 
 	return filepath.Walk(dir, func(p string, fi os.FileInfo, err error) error {
 		if p == dir || fi.IsDir() || !opts.re.MatchString(filepath.Base(p)) {
@@ -117,22 +118,42 @@ func scanFiles(dir string, opts *scanOptions, db *audioDB, fps *fpcalcSettings) 
 			}
 		}
 
-		hits := make(map[int64]int) // file ID to number of matching truncated values
+		fileHits := make(map[fileID]map[trunc]int16)
 
-		// TODO: Handle duplicate entries?
 		for _, v := range fprint {
-			key := v >> (32 - opts.bits)
-			ids := lookup[key]
-			for _, oid := range ids {
-				if oid != id {
-					hits[oid]++
+			key := trunc(v >> 16)
+			for oid, ocnt := range lookup[key] { // other file ID and occurrences of key in it
+				if oid == id {
+					continue
 				}
+				if oldCnt := fileHits[oid][key]; oldCnt < ocnt {
+					if fileHits[oid] == nil {
+						fileHits[oid] = make(map[trunc]int16)
+					}
+					fileHits[oid][key]++
+				}
+
 			}
-			lookup[key] = append(ids, id)
+
+			m := lookup[key]
+			if m == nil {
+				m = make(map[fileID]int16)
+			}
+			m[id]++
+			lookup[key] = m
 		}
 
-		for oid, cnt := range hits {
-			fmt.Printf("%d: %d (%d/%d)\n", id, oid, cnt, len(fprint))
+		for oid, m := range fileHits {
+			var cnt int16
+			for _, v := range m {
+				cnt += v
+			}
+
+			op, err := db.path(oid)
+			if err != nil {
+				return fmt.Errorf("getting path for %d: %v", oid, err)
+			}
+			fmt.Printf("%s: %s (%d/%d)\n", rel, op, cnt, len(fprint))
 		}
 
 		return nil

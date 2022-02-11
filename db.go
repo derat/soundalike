@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"os"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -64,9 +65,12 @@ func newAudioDB(path string, settings *fpcalcSettings) (*audioDB, error) {
 
 func (adb *audioDB) close() error { return adb.db.Close() }
 
+// fileID uniquely identifies a file in audioDB.
+type fileID int32
+
 // get returns the ID and saved fingerprint corresponding to the file at path.
 // If the file is not present in the database, 0 and a nil slice are returned.
-func (adb *audioDB) get(path string) (id int64, fprint []uint32, err error) {
+func (adb *audioDB) get(path string) (id fileID, fprint []uint32, err error) {
 	// ROWID is automatically assigned by SQLite: https://www.sqlite.org/autoinc.html
 	row := adb.db.QueryRow(`SELECT ROWID, Fingerprint FROM Files WHERE Path = ?`, path)
 	var b []byte
@@ -86,7 +90,7 @@ func (adb *audioDB) get(path string) (id int64, fprint []uint32, err error) {
 }
 
 // save saves the supplied fingerprint for the file at path.
-func (adb *audioDB) save(path string, fprint []uint32) (id int64, err error) {
+func (adb *audioDB) save(path string, fprint []uint32) (id fileID, err error) {
 	var b bytes.Buffer
 	if err := binary.Write(&b, dbByteOrder, fprint); err != nil {
 		return 0, err
@@ -95,5 +99,21 @@ func (adb *audioDB) save(path string, fprint []uint32) (id int64, err error) {
 	if err != nil {
 		return 0, err
 	}
-	return res.LastInsertId()
+	id64, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	// This is a hack to save space. ROWID is really an int64, but int32 seems like
+	// more than enough here since IDs are apparently assigned in increasing order.
+	if id64 <= 0 || id64 > math.MaxInt32 {
+		return 0, fmt.Errorf("invalid id %v", id64)
+	}
+	return fileID(id64), nil
+}
+
+// path returns the path of the file with the specified ID.
+func (adb *audioDB) path(id fileID) (path string, err error) {
+	row := adb.db.QueryRow(`SELECT Path FROM Files WHERE ROWID = ?`, int64(id))
+	err = row.Scan(&path)
+	return path, err
 }
