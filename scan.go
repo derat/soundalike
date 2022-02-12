@@ -82,7 +82,7 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			finfo, err := runFpcalc(p, fps)
 			if err != nil {
 				if exit, ok := err.(*exec.ExitError); ok {
-					stderr := strings.SplitN(string(exit.Stderr), "\n", 1)[0]
+					stderr := strings.SplitN(string(exit.Stderr), "\n", 2)[0]
 					if opts.skipBadFiles {
 						log.Printf("Skipping %v: %v (%v)", p, err, stderr)
 						return nil
