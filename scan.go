@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/bits"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +21,8 @@ type scanOptions struct {
 	fileString   string         // uncompiled fileRegexp
 	fileRegexp   *regexp.Regexp // matches files to scan
 	logSec       int            // logging frequency
-	lookupThresh float64        // match threshold for lookup table in (0.0, 1.0]
+	lookupThresh float64        // threshold for lookup table in (0.0, 1.0]
+	matchThresh  float64        // threshold for song-to-song comparisons in (0.0, 1.0]
 	skipBadFiles bool           // skip files that can't be fingerprinted by fpcalc
 }
 
@@ -29,10 +31,10 @@ func defaultScanOptions() *scanOptions {
 		// TODO: I'm just guessing what should be included here. See
 		// https://en.wikipedia.org/wiki/Audio_file_format#List_of_formats and
 		// https://en.wikipedia.org/wiki/FFmpeg#Supported_codecs_and_formats.
-		fileString: `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
-		logSec:     10,
-		// TODO: I have no idea what this should be.
+		fileString:   `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
+		logSec:       10,
 		lookupThresh: 0.25,
+		matchThresh:  0.90,
 		skipBadFiles: true,
 	}
 }
@@ -43,6 +45,13 @@ func (o *scanOptions) finish() error {
 		return err
 	} else if !fi.IsDir() {
 		return fmt.Errorf("%v is not a directory", o.dir)
+	}
+
+	if o.lookupThresh <= 0 || o.lookupThresh > 1.0 {
+		return fmt.Errorf("bad lookup threshold %v", o.lookupThresh)
+	}
+	if o.matchThresh <= 0 || o.matchThresh > 1.0 {
+		return fmt.Errorf("bad match threshold %v", o.matchThresh)
 	}
 
 	var err error
@@ -93,12 +102,18 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			}
 		}
 
-		// TODO: This probably produces lots of false positives.
-		// I should probably do additional comparisons using the full fingerprints.
 		thresh := int(float64(len(info.fprint)) * opts.lookupThresh)
 		for _, oid := range lookup.find(info.fprint, thresh) {
-			edges[info.id] = append(edges[info.id], oid)
-			edges[oid] = append(edges[oid], info.id)
+			oinfo, err := db.get(oid, "")
+			if err != nil {
+				return err
+			} else if oinfo == nil {
+				return fmt.Errorf("%d not in database", oid)
+			}
+			if score := compareFingerprints(info.fprint, oinfo.fprint); score >= opts.matchThresh {
+				edges[info.id] = append(edges[info.id], oid)
+				edges[oid] = append(edges[oid], info.id)
+			}
 		}
 
 		lookup.add(info.id, info.fprint)
@@ -133,6 +148,37 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 		groups = append(groups, group)
 	}
 	return groups, nil
+}
+
+// compareFingerprints returns the ratio of identical bits in a and b
+// to total bits in the longer of the two. All possible alignments are
+// checked, and the highest ratio is returned.
+func compareFingerprints(a, b []uint32) float64 {
+	count := func(a, b []uint32) int {
+		var cnt int
+		for i := 0; i < len(a) && i < len(b); i++ {
+			cnt += 32 - bits.OnesCount32(a[i]^b[i])
+		}
+		return cnt
+	}
+
+	best := count(a, b)
+	for i := 1; i < len(a); i++ {
+		if cnt := count(a[i:], b); cnt > best {
+			best = cnt
+		}
+	}
+	for i := 1; i < len(b); i++ {
+		if cnt := count(a, b[i:]); cnt > best {
+			best = cnt
+		}
+	}
+
+	max := len(a)
+	if len(b) > max {
+		max = len(b)
+	}
+	return float64(best) / float64(32*max)
 }
 
 // components returns all components from the undirected graph described by edges.

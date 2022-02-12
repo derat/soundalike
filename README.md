@@ -39,7 +39,9 @@ Finds duplicate audio files within a directory.
   -log-sec int
         Logging frequency in seconds (0 or negative to disable logging) (default 10)
   -lookup-threshold float
-        Match threshold for lookup table in (0.0, 1.0] (default 0.25)
+        Threshold for lookup table in (0.0, 1.0] (default 0.25)
+  -match-threshold float
+        Threshold for song-to-song comparisons in (0.0, 1.0] (default 0.9)
   -print-file-info
         Print file sizes and durations (default true)
   -print-full-paths
