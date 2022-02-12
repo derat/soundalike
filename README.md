@@ -7,7 +7,8 @@ by comparing acoustic fingerprints. Its main focus is identifying duplicate
 songs in music collections.
 
 Fingerprints are generated using the `fpcalc` utility from the [Chromaprint]
-library. No network requests are made to [AcoustID] or other APIs.
+library (which does basically all of the heavy lifting). No network requests
+are made to [AcoustID] or other APIs.
 
 [Chromaprint]: https://github.com/acoustid/chromaprint
 [AcoustID]: https://acoustid.org/
@@ -18,6 +19,13 @@ To compile and install the `soundalike` executable, run `go install` from the
 root of this repository. You will need to have [Go] installed.
 
 [Go]: https://go.dev/
+
+`fpcalc` must be in your path. On a Debian system, it can be installed by
+running:
+
+```
+sudo apt install libchromaprint-utils
+```
 
 `soundalike` scans all of the audio files that it finds in the supplied
 directory and then prints groups of similar files.
@@ -45,7 +53,7 @@ Find duplicate audio files within a directory.
   -lookup-threshold float
         Threshold for lookup table in (0.0, 1.0] (default 0.25)
   -match-threshold float
-        Threshold for song-to-song comparisons in (0.0, 1.0] (default 0.95)
+        Threshold for bitwise comparisons in (0.0, 1.0] (default 0.95)
   -print-file-info
         Print file sizes and durations (default true)
   -print-full-paths
@@ -54,16 +62,68 @@ Find duplicate audio files within a directory.
         Skip files that can't be fingerprinted by fpcalc (default true)
 ```
 
-`fpcalc` must be in your path. On a Debian system, it can be installed by
-running:
+Example output when scanning a directory:
 
 ```
-sudo apt install libchromaprint-utils
+% soundalike .
+2022/02/12 08:49:49 Finished scanning 67 files
+eva02.mp3    3.07 MB  120.45 sec
+Eva_Two.mp3  1.84 MB  120.46 sec
+
+hedgehogs_dilemma.mp3  3.82 MB  167.37 sec
+Hedgehogs_Dilemma.mp3  2.55 MB  167.35 sec
+
+...
 ```
+
+`-compare` can also be used to compare two files:
+
+```
+% soundalike -fpcalc-length 600 -compare fly_me_to_the_moon_instrumental_version.mp3 Fly_Me_To_The_Moon_Instrumental.mp3
+0.972
+% soundalike -fpcalc-length 600 -compare fly_me_to_the_moon_instrumental_version.mp3 Fly_Me_To_The_Moon_Instrumental_2.mp3
+0.202
+```
+
+## How it works
+
+[Chromaprint]'s `fpcalc` utility splits audio into overlapping frames and uses
+[Fourier transforms] to identify (Western) notes, eventually generating
+fingerprints consisting of sequences of 32-bit unsigned integers (in my
+experience, ~100 for a 15-second sample and ~462 for a minute).
+
+`soundalike` runs `fpcalc` on each file and maintains a lookup table from
+values from fingerprints (truncated from 32 to 16 bits) to files. Fingerprint
+values (irrespective of order) are compared between files. If
+`-lookup-threshold` or more of the values match, the file pair moves on to the
+next phase.
+
+The two fingerprints are then compared in their original order, with all
+possible alignments, to see how many bits match between the two. If more than
+`-match-threshold` of the bits are identical, the file pair is retained.
+
+Pairs are treated as edges in an undirected graph, and files are grouped into
+components. Finally, each group is printed.
+
+When `-compare` is passed, only the final bit comparison is performed.
+
+[Fourier transforms]: https://en.wikipedia.org/wiki/Fourier_transform
+
+## Accuracy
+
+Vocal and instrumental versions of the same song can be problematic. With the
+`-fpcalc-length` flag's default value only the first 15 seconds of each file are
+fingerprinted, so if the vocals only come in later in the song the files will
+appear to be identical. A larger value can be passed at the the expense of
+performance and memory consumption.
+
+I've also sometimes seen false positives between tracks that start with silence,
+or between electronic tracks that start with the same chords or with similar
+drumbeats. Passing a higher `-match-threshold` value may prevent some of these.
 
 ## Performance
 
-Performance is largely dependent on the `-length` flag's value.
+Performance is largely dependent on the `-fpcalc-length` flag's value.
 
 On a laptop with an Intel Core i5-8250U CPU 1.60GHz processor, `soundalike`
 takes about 10 seconds to scan 99 MP3 and WAV files totalling 266 MB using the
