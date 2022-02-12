@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -146,8 +147,10 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			}
 			group[i] = info
 		}
+		sort.Slice(group, func(i, j int) bool { return group[i].path < group[j].path })
 		groups = append(groups, group)
 	}
+	sort.Slice(groups, func(i, j int) bool { return groups[i][0].path < groups[j][0].path })
 	return groups, nil
 }
 
