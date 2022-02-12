@@ -18,7 +18,7 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]... <DIR>\n"+
-			"Finds duplicate audio files within a directory.\n\n", os.Args[0])
+			"Find duplicate audio files within a directory.\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	dbPath := flag.String("db", "", `SQLite database file for storing file info (empty for temp file)`)

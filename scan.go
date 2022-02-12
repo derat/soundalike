@@ -34,7 +34,7 @@ func defaultScanOptions() *scanOptions {
 		fileString:   `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
 		logSec:       10,
 		lookupThresh: 0.25,
-		matchThresh:  0.90,
+		matchThresh:  0.95,
 		skipBadFiles: true,
 	}
 }

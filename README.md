@@ -22,7 +22,7 @@ directory and then prints groups of similar files.
 
 ```
 Usage soundalike: [flag]... <DIR>
-Finds duplicate audio files within a directory.
+Find duplicate audio files within a directory.
 
   -db string
         SQLite database file for storing file info (empty for temp file)
@@ -41,7 +41,7 @@ Finds duplicate audio files within a directory.
   -lookup-threshold float
         Threshold for lookup table in (0.0, 1.0] (default 0.25)
   -match-threshold float
-        Threshold for song-to-song comparisons in (0.0, 1.0] (default 0.9)
+        Threshold for song-to-song comparisons in (0.0, 1.0] (default 0.95)
   -print-file-info
         Print file sizes and durations (default true)
   -print-full-paths
