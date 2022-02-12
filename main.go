@@ -17,12 +17,12 @@ func main() {
 	opts := defaultScanOptions()
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]... <DIR>\n"+
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %v [flag]... <DIR>\n"+
 			"Find duplicate audio files within a directory.\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	dbPath := flag.String("db", "", `SQLite database file for storing file info (empty for temp file)`)
-	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Case-insensitive regular expression for audio files")
+	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Regular expression for audio files")
 	flag.IntVar(&fps.algorithm, "fpcalc-algorithm", fps.algorithm, `Fingerprint algorithm`)
 	flag.Float64Var(&fps.chunk, "fpcalc-chunk", fps.chunk, `Audio chunk duration in seconds`)
 	flag.Float64Var(&fps.length, "fpcalc-length", fps.length, `Max audio duration in seconds to process`)

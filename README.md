@@ -21,13 +21,13 @@ root of this repository. You will need to have [Go] installed.
 directory and then prints groups of similar files.
 
 ```
-Usage soundalike: [flag]... <DIR>
+Usage: soundalike [flag]... <DIR>
 Find duplicate audio files within a directory.
 
   -db string
         SQLite database file for storing file info (empty for temp file)
   -file-regexp string
-        Case-insensitive regular expression for audio files (default "\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
+        Regular expression for audio files (default "(?i)\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
   -fpcalc-algorithm int
         Fingerprint algorithm (default 2)
   -fpcalc-chunk float
@@ -48,6 +48,7 @@ Find duplicate audio files within a directory.
         Print absolute file paths (rather than relative to dir)
   -skip-bad-files
         Skip files that can't be fingerprinted by fpcalc (default true)
+
 ```
 
 `fpcalc` must be in your path. On a Debian system, it can be installed by

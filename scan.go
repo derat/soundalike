@@ -31,7 +31,7 @@ func defaultScanOptions() *scanOptions {
 		// TODO: I'm just guessing what should be included here. See
 		// https://en.wikipedia.org/wiki/Audio_file_format#List_of_formats and
 		// https://en.wikipedia.org/wiki/FFmpeg#Supported_codecs_and_formats.
-		fileString:   `\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
+		fileString:   `(?i)\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$`,
 		logSec:       10,
 		lookupThresh: 0.25,
 		matchThresh:  0.95,
