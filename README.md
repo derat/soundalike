@@ -26,6 +26,8 @@ directory and then prints groups of similar files.
 Usage: soundalike [flag]... <DIR>
 Find duplicate audio files within a directory.
 
+  -compare
+        Compare two files given via positional args instead of scanning directory
   -db string
         SQLite database file for storing file info (empty for temp file)
   -file-regexp string
@@ -50,7 +52,6 @@ Find duplicate audio files within a directory.
         Print absolute file paths (rather than relative to dir)
   -skip-bad-files
         Skip files that can't be fingerprinted by fpcalc (default true)
-
 ```
 
 `fpcalc` must be in your path. On a Debian system, it can be installed by

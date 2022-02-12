@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 // fpcalcSettings contains command-line settings for the fpcalc utility.
@@ -62,6 +63,12 @@ func runFpcalc(path string, settings *fpcalcSettings) (*fpcalcResult, error) {
 
 	out, err := exec.Command("fpcalc", args...).Output()
 	if err != nil {
+		// Try to get some additional info from stderr.
+		if exit, ok := err.(*exec.ExitError); ok {
+			if stderr := strings.SplitN(string(exit.Stderr), "\n", 2)[0]; stderr != "" {
+				err = fmt.Errorf("%v (%v)", err, stderr)
+			}
+		}
 		return nil, err
 	}
 	var res fpcalcResult

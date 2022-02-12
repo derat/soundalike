@@ -21,6 +21,7 @@ func main() {
 			"Find duplicate audio files within a directory.\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}
+	compare := flag.Bool("compare", false, `Compare two files given via positional args instead of scanning directory`)
 	dbPath := flag.String("db", "", `SQLite database file for storing file info (empty for temp file)`)
 	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Regular expression for audio files")
 	flag.IntVar(&fps.algorithm, "fpcalc-algorithm", fps.algorithm, `Fingerprint algorithm`)
@@ -37,18 +38,30 @@ func main() {
 
 	os.Exit(func() int {
 		// Perform some initial checks before creating the database file.
-		if flag.NArg() != 1 {
-			flag.Usage()
-			return 2
+		if *compare {
+			if flag.NArg() != 2 {
+				flag.Usage()
+				return 2
+			}
+		} else {
+			if flag.NArg() != 1 {
+				flag.Usage()
+				return 2
+			}
+			opts.dir = flag.Arg(0)
 		}
-		opts.dir = flag.Arg(0)
 		if err := opts.finish(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 2
 		}
+
 		if !haveFpcalc() {
 			fmt.Fprintln(os.Stderr, "fpcalc not in path (install libchromaprint-tools?)")
 			return 1
+		}
+
+		if *compare {
+			return doCompare(flag.Arg(0), flag.Arg(1), fps)
 		}
 
 		if *dbPath == "" {
@@ -101,6 +114,23 @@ func main() {
 	}())
 }
 
+// doCompare compares the files at pa and pb on behalf of the -compare flag.
+func doCompare(pa, pb string, fps *fpcalcSettings) int {
+	ra, err := runFpcalc(pa, fps)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed fingerprinting %v: %v\n", pa, err)
+		return 1
+	}
+	rb, err := runFpcalc(pb, fps)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed fingerprinting %v: %v\n", pb, err)
+		return 1
+	}
+	fmt.Printf("%0.3f\n", compareFingerprints(ra.Fingerprint, rb.Fingerprint))
+	return 0
+}
+
+// formatFiles returns column-aligned lines describing each supplied file.
 func formatFiles(infos []*fileInfo, pathPrefix string) []string {
 	if len(infos) == 0 {
 		return nil

@@ -8,7 +8,6 @@ import (
 	"log"
 	"math/bits"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -40,11 +39,13 @@ func defaultScanOptions() *scanOptions {
 }
 
 func (o *scanOptions) finish() error {
-	o.dir = strings.TrimRight(o.dir, "/")
-	if fi, err := os.Stat(o.dir); err != nil {
-		return err
-	} else if !fi.IsDir() {
-		return fmt.Errorf("%v is not a directory", o.dir)
+	if o.dir != "" {
+		o.dir = strings.TrimRight(o.dir, "/")
+		if fi, err := os.Stat(o.dir); err != nil {
+			return err
+		} else if !fi.IsDir() {
+			return fmt.Errorf("%v is not a directory", o.dir)
+		}
 	}
 
 	if o.lookupThresh <= 0 || o.lookupThresh > 1.0 {
@@ -81,15 +82,11 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 		} else if info == nil {
 			finfo, err := runFpcalc(p, fps)
 			if err != nil {
-				if exit, ok := err.(*exec.ExitError); ok {
-					stderr := strings.SplitN(string(exit.Stderr), "\n", 2)[0]
-					if opts.skipBadFiles {
-						log.Printf("Skipping %v: %v (%v)", p, err, stderr)
-						return nil
-					}
-					return fmt.Errorf("%v: %v (%v)", p, err, stderr)
+				if opts.skipBadFiles {
+					log.Printf("Skipping %v: %v", p, err)
+					return nil
 				}
-				return err
+				return fmt.Errorf("%v: %v", p, err)
 			}
 			info = &fileInfo{
 				path:     rel,
