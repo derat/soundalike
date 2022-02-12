@@ -75,7 +75,11 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			return nil
 		}
 
-		rel := p[len(opts.dir)+1:]
+		rel, err := filepath.Rel(opts.dir, p)
+		if err != nil {
+			return err
+		}
+
 		info, err := db.get(0, rel)
 		if err != nil {
 			return err
