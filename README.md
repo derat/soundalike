@@ -2,9 +2,9 @@
 
 [![Build Status](https://storage.googleapis.com/derat-build-badges/94f3a3fa-5be1-4aee-883b-7907fb50a7fa.svg)](https://storage.googleapis.com/derat-build-badges/94f3a3fa-5be1-4aee-883b-7907fb50a7fa.html)
 
-`soundalike` is a Go command-line program that tries to find similar audio files
-by comparing acoustic fingerprints. Its main focus is identifying duplicate
-songs in music collections.
+`soundalike` is a command-line program that tries to find similar audio files by
+comparing acoustic fingerprints. Its main focus is identifying duplicate songs
+in music collections.
 
 Fingerprints are generated using the `fpcalc` utility from the [Chromaprint]
 library (which does basically all of the heavy lifting). No network requests
