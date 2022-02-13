@@ -22,7 +22,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	compare := flag.Bool("compare", false, `Compare two files given via positional args instead of scanning directory`)
-	dbPath := flag.String("db", "", `SQLite database file for storing file info (empty for temp file)`)
+	dbPath := flag.String("db", "", `SQLite database file for storing file info (temp file if unset)`)
 	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Regular expression for audio files")
 	flag.IntVar(&fps.algorithm, "fpcalc-algorithm", fps.algorithm, `Fingerprint algorithm`)
 	flag.Float64Var(&fps.chunk, "fpcalc-chunk", fps.chunk, `Audio chunk duration in seconds`)

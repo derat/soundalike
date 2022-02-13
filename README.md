@@ -37,7 +37,7 @@ Find duplicate audio files within a directory.
   -compare
         Compare two files given via positional args instead of scanning directory
   -db string
-        SQLite database file for storing file info (empty for temp file)
+        SQLite database file for storing file info (temp file if unset)
   -file-regexp string
         Regular expression for audio files (default "(?i)\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
   -fpcalc-algorithm int
@@ -79,9 +79,13 @@ Hedgehogs_Dilemma.mp3  2.55 MB  167.35 sec
 `-compare` can also be used to compare two files:
 
 ```
-% soundalike -fpcalc-length 600 -compare fly_me_to_the_moon_instrumental_version.mp3 Fly_Me_To_The_Moon_Instrumental.mp3
+% soundalike -fpcalc-length 600 -compare \
+  fly_me_to_the_moon_instrumental_version.mp3 \
+  Fly_Me_To_The_Moon_Instrumental.mp3
 0.972
-% soundalike -fpcalc-length 600 -compare fly_me_to_the_moon_instrumental_version.mp3 Fly_Me_To_The_Moon_Instrumental_2.mp3
+% soundalike -fpcalc-length 600 -compare \
+  fly_me_to_the_moon_instrumental_version.mp3 \
+  Fly_Me_To_The_Moon_Instrumental_2.mp3
 0.202
 ```
 
@@ -105,7 +109,7 @@ possible alignments, to see how many bits match between the two. If more than
 Pairs are treated as edges in an undirected graph, and files are grouped into
 components. Finally, each group is printed.
 
-When `-compare` is passed, only the final bit comparison is performed.
+When `-compare` is passed, only the final bitwise comparison is performed.
 
 [Fourier transforms]: https://en.wikipedia.org/wiki/Fourier_transform
 
