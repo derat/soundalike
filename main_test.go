@@ -4,20 +4,30 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
 
-func TestMain(t *testing.T) {
+func checkTestEnv() error {
 	if _, err := exec.LookPath("soundalike"); err != nil {
-		t.Fatal("soundalike executable not in path")
+		return errors.New("soundalike executable not in path")
 	}
 	if _, err := os.Stat("testdata"); os.IsNotExist(err) {
-		t.Fatal("testdata/ should be https://github.com/derat/soundalike-testdata checkout")
+		return errors.New("testdata/ should be https://github.com/derat/soundalike-testdata checkout")
 	} else if err != nil {
-		t.Fatal(err)
+		return err
+	}
+	return nil
+}
+
+func TestMain_Scan(t *testing.T) {
+	if err := checkTestEnv(); err != nil {
+		t.Fatal("Bad test environment: ", err)
 	}
 
 	want := strings.TrimLeft(`
@@ -35,10 +45,64 @@ pad/Honey Bee.mp3
 		"-log-sec=0",
 		"-print-file-info=false",
 		"-fpcalc-length=45",
-		"testdata")
+		"testdata",
+	)
 	if got, err := cmd.Output(); err != nil {
-		t.Fatal("soundalike failed: ", err)
+		t.Errorf("%s failed: %v", cmd, err)
 	} else if string(got) != want {
-		t.Errorf("soundalike printed unexpected output:\n got: %q\n want: %q", string(got), want)
+		t.Errorf("%s printed unexpected output:\n got: %q\n want: %q", cmd, string(got), want)
+	}
+}
+
+func TestMain_Compare(t *testing.T) {
+	if err := checkTestEnv(); err != nil {
+		t.Fatal("Bad test environment: ", err)
+	}
+
+	type result int
+	const (
+		identical result = iota
+		similar
+		different
+	)
+	const thresh = 0.95 // threshold for "similar" songs
+
+	const (
+		file1 = "Honey Bee.mp3"
+		file2 = "Fanfare for Space.mp3"
+	)
+
+	for _, tc := range []struct {
+		a, b string // paths under testdata/
+		res  result
+	}{
+		{"orig/" + file1, "orig/" + file1, identical},
+		{"orig/" + file1, "orig/" + file2, different},
+		{"orig/" + file1, "64/" + file1, similar},
+		{"orig/" + file1, "pad/" + file1, similar},
+	} {
+		cmd := exec.Command(
+			"soundalike",
+			"-compare",
+			filepath.Join("testdata", tc.a),
+			filepath.Join("testdata", tc.b),
+		)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Errorf("%s failed: %v", cmd, err)
+			continue
+		}
+		got, err := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+		if err != nil {
+			t.Errorf("%s printed bad output %q: %v", cmd, string(out), err)
+			continue
+		}
+		if tc.res == identical && got != 1.0 {
+			t.Errorf("%s returned %0.3f; want 1.0", cmd, got)
+		} else if tc.res == similar && (got < thresh || got >= 1.0) {
+			t.Errorf("%s returned %0.3f; want [%0.3f, 1.0)", cmd, got, thresh)
+		} else if tc.res == different && (got < 0 || got >= thresh) {
+			t.Errorf("%s returned %0.3f; want [0.0, %0.3f)", cmd, got, thresh)
+		}
 	}
 }

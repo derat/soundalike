@@ -11,27 +11,39 @@ import (
 
 func TestCompareFingerprints(t *testing.T) {
 	for _, tc := range []struct {
-		a, b []uint32
-		want float64
+		a, b      []uint32
+		minLength bool
+		want      float64
 	}{
 		{
 			[]uint32{0x0000ffe4},
 			[]uint32{0xffff0f14},
-			8.0 / 32,
+			false, 8.0 / 32,
 		},
 		{
 			[]uint32{0xfffffffe, 0x80000001},
 			[]uint32{0x7fffffff, 0xf0000001},
-			59.0 / 64,
+			false, 59.0 / 64,
 		},
 		{
 			[]uint32{0x00000000, 0x01010101, 0xffffffff, 0xcafebeef},
 			[]uint32{0x01010101, 0xffffffff, 0xcafebeef, 0x00000000},
-			96.0 / 128,
+			false, 96.0 / 128,
+		},
+		{
+			[]uint32{0x00000000, 0xffffffff, 0x01010101},
+			[]uint32{0xffffffff, 0x01010101},
+			false, 64.0 / 96,
+		},
+		{
+			[]uint32{0x00000000, 0xffffffff, 0x01010101},
+			[]uint32{0xffffffff, 0x01010101},
+			true, 64.0 / 64,
 		},
 	} {
-		if got := compareFingerprints(tc.a, tc.b); got != tc.want {
-			t.Errorf("compareFingerprints(%v, %v) = %0.3f; want %0.3f", tc.a, tc.b, got, tc.want)
+		if got := compareFingerprints(tc.a, tc.b, tc.minLength); got != tc.want {
+			t.Errorf("compareFingerprints(%v, %v, %v) = %0.3f; want %0.3f",
+				tc.a, tc.b, tc.minLength, got, tc.want)
 		}
 	}
 }

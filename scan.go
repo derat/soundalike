@@ -17,13 +17,14 @@ import (
 
 // scanOptions contains options for scanFiles.
 type scanOptions struct {
-	dir          string         // directory containing audio files
-	fileString   string         // uncompiled fileRegexp
-	fileRegexp   *regexp.Regexp // matches files to scan
-	logSec       int            // logging frequency
-	lookupThresh float64        // threshold for lookup table in (0.0, 1.0]
-	matchThresh  float64        // threshold for song-to-song comparisons in (0.0, 1.0]
-	skipBadFiles bool           // skip files that can't be fingerprinted by fpcalc
+	dir            string         // directory containing audio files
+	fileString     string         // uncompiled fileRegexp
+	fileRegexp     *regexp.Regexp // matches files to scan
+	logSec         int            // logging frequency
+	lookupThresh   float64        // threshold for lookup table in (0.0, 1.0]
+	matchThresh    float64        // threshold for bitwise comparisons in (0.0, 1.0]
+	matchMinLength bool           // use min length (instead of max) for bitwise comparisons
+	skipBadFiles   bool           // skip files that can't be fingerprinted by fpcalc
 }
 
 func defaultScanOptions() *scanOptions {
@@ -118,7 +119,8 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			} else if oinfo == nil {
 				return fmt.Errorf("%d not in database", oid)
 			}
-			if score := compareFingerprints(info.fprint, oinfo.fprint); score >= opts.matchThresh {
+			score := compareFingerprints(info.fprint, oinfo.fprint, opts.matchMinLength)
+			if score >= opts.matchThresh {
 				edges[info.id] = append(edges[info.id], oid)
 				edges[oid] = append(edges[oid], info.id)
 			}
@@ -160,10 +162,10 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 	return groups, nil
 }
 
-// compareFingerprints returns the ratio of identical bits in a and b
-// to total bits in the longer of the two. All possible alignments are
-// checked, and the highest ratio is returned.
-func compareFingerprints(a, b []uint32) float64 {
+// compareFingerprints returns the ratio of identical bits in a and b to the
+// total bits in the longer (or shorter if minLength is true) of the two.
+// All possible alignments are checked, and the highest ratio is returned.
+func compareFingerprints(a, b []uint32, minLength bool) float64 {
 	count := func(a, b []uint32) int {
 		var cnt int
 		for i := 0; i < len(a) && i < len(b); i++ {
@@ -184,11 +186,11 @@ func compareFingerprints(a, b []uint32) float64 {
 		}
 	}
 
-	max := len(a)
-	if len(b) > max {
-		max = len(b)
+	total := len(a)
+	if (minLength && len(b) < total) || (!minLength && len(b) > total) {
+		total = len(b)
 	}
-	return float64(best) / float64(32*max)
+	return float64(best) / float64(32*total)
 }
 
 // components returns all components from the undirected graph described by edges.

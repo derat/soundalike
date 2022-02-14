@@ -36,6 +36,7 @@ Find duplicate audio files within a directory.
 
   -compare
         Compare two files given via positional args instead of scanning directory
+        (increases -fpcalc-length by default)
   -db string
         SQLite database file for storing file info (temp file if unset)
   -file-regexp string
@@ -52,6 +53,8 @@ Find duplicate audio files within a directory.
         Logging frequency in seconds (0 or negative to disable logging) (default 10)
   -lookup-threshold float
         Threshold for lookup table in (0.0, 1.0] (default 0.25)
+  -match-min-length
+        Use shorter fingerprint length when scoring bitwise comparisons
   -match-threshold float
         Threshold for bitwise comparisons in (0.0, 1.0] (default 0.95)
   -print-file-info
@@ -79,15 +82,18 @@ Hedgehogs_Dilemma.mp3  2.55 MB  167.35 sec
 `-compare` can also be used to compare two files:
 
 ```
-% soundalike -fpcalc-length 600 -compare \
+% soundalike -compare \
   fly_me_to_the_moon_instrumental_version.mp3 \
   Fly_Me_To_The_Moon_Instrumental.mp3
 0.972
-% soundalike -fpcalc-length 600 -compare \
+% soundalike -compare \
   fly_me_to_the_moon_instrumental_version.mp3 \
   Fly_Me_To_The_Moon_Instrumental_2.mp3
 0.202
 ```
+
+The `-match-min-length` flag may be helpful for detecting songs that have been
+truncated or that contain added silence at their beginnings or ends.
 
 ## How it works
 
