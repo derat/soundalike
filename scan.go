@@ -25,6 +25,7 @@ type scanOptions struct {
 	matchThresh    float64        // threshold for bitwise comparisons in (0.0, 1.0]
 	matchMinLength bool           // use min length (instead of max) for bitwise comparisons
 	skipBadFiles   bool           // skip files that can't be fingerprinted by fpcalc
+	skipNewFiles   bool           // skip files that aren't in database
 }
 
 func defaultScanOptions() *scanOptions {
@@ -92,6 +93,9 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 		if err != nil {
 			return err
 		} else if info == nil {
+			if opts.skipNewFiles {
+				return nil
+			}
 			finfo, err := runFpcalc(p, fps)
 			if err != nil {
 				if opts.skipBadFiles {

@@ -63,6 +63,8 @@ Find duplicate audio files within a directory.
         Print absolute file paths (rather than relative to dir)
   -skip-bad-files
         Skip files that can't be fingerprinted by fpcalc (default true)
+  -skip-new-files
+        Skip files not already in database given via -db
 ```
 
 Example output when scanning a directory:
@@ -146,7 +148,9 @@ A much slower system with an Intel Celeron 2955U 1.40GHz processor takes roughly
 When running against a large music collection, the `-db` flag can be passed to
 save fingerprints and other file information for future runs. Note that the
 database will not be reusable if you pass different `-fpcalc-*` flags in the
-future, since those change how `fpcalc` computes fingerprints.
+future, since those change how `fpcalc` computes fingerprints. When running
+`soundalike` repeatedly, `-skip-new-files` can be used to avoid repeatedly
+trying to fingerprint bad/corrupted files.
 
 ## Memory usage
 

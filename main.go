@@ -35,7 +35,8 @@ func main() {
 	flag.BoolVar(&opts.matchMinLength, "match-min-length", opts.matchMinLength, `Use shorter fingerprint length when scoring bitwise comparisons`)
 	printFileInfo := flag.Bool("print-file-info", true, `Print file sizes and durations`)
 	printFullPaths := flag.Bool("print-full-paths", false, `Print absolute file paths (rather than relative to dir)`)
-	flag.BoolVar(&opts.skipBadFiles, "skip-bad-files", true, `Skip files that can't be fingerprinted by fpcalc`)
+	flag.BoolVar(&opts.skipBadFiles, "skip-bad-files", opts.skipBadFiles, `Skip files that can't be fingerprinted by fpcalc`)
+	flag.BoolVar(&opts.skipNewFiles, "skip-new-files", opts.skipNewFiles, `Skip files not already in database given via -db`)
 	flag.Parse()
 
 	os.Exit(func() int {
