@@ -66,17 +66,23 @@ func (o *scanOptions) finish() error {
 
 // scanFiles scans opts.dir and returns groups of similar files.
 func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileInfo, error) {
+	// filepath.Walk doesn't follow symlinks, so do it manually first.
+	dir, err := filepath.EvalSymlinks(opts.dir)
+	if err != nil {
+		return nil, err
+	}
+
 	lookup := newLookupTable()
 	edges := make(map[fileID][]fileID)
 
 	lastLog := time.Now()
 	var scanned int
-	if err := filepath.Walk(opts.dir, func(p string, fi os.FileInfo, err error) error {
-		if p == opts.dir || fi.IsDir() || !opts.fileRegexp.MatchString(filepath.Base(p)) {
+	if err := filepath.Walk(dir, func(p string, fi os.FileInfo, err error) error {
+		if p == dir || fi.IsDir() || !opts.fileRegexp.MatchString(filepath.Base(p)) {
 			return nil
 		}
 
-		rel, err := filepath.Rel(opts.dir, p)
+		rel, err := filepath.Rel(dir, p)
 		if err != nil {
 			return err
 		}

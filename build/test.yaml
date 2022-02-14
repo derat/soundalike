@@ -1,4 +1,34 @@
 steps:
-  - name: golang
-    entrypoint: go
-    args: ["test", "-v", "./..."]
+  - id: download_testdata
+    name: debian:stable-slim
+    entrypoint: bash
+    args:
+      - "-e"
+      - "-x"
+      - "-c"
+      - |
+        apt-get update
+        apt-get install -y tar unzip wget
+        wget "https://github.com/derat/soundalike-testdata/archive/refs/tags/v${_TESTDATA}.zip"
+        unzip "v${_TESTDATA}.zip"
+        rm "v${_TESTDATA}.zip"
+        mv "soundalike-testdata-${_TESTDATA}" testdata
+        wget "https://github.com/acoustid/chromaprint/releases/download/v${_FPCALC}/chromaprint-fpcalc-${_FPCALC}-linux-x86_64.tar.gz"
+        tar xf "chromaprint-fpcalc-${_FPCALC}-linux-x86_64.tar.gz"
+        mv "chromaprint-fpcalc-${_FPCALC}-linux-x86_64/fpcalc" .
+
+  - id: run_tests
+    name: golang
+    entrypoint: bash
+    args:
+      - "-e"
+      - "-x"
+      - "-c"
+      - |
+        go install
+        mv fpcalc /usr/bin/fpcalc
+        go test -v ./...
+
+substitutions:
+  _FPCALC: "1.5.1"
+  _TESTDATA: "0.0.1"
