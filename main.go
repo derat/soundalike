@@ -152,6 +152,11 @@ func doCompare(pa, pb string, opts *scanOptions, fps *fpcalcSettings, interval i
 	if interval <= 0 {
 		fmt.Printf("%0.3f\n", score)
 	} else {
+		if aoff > boff {
+			fmt.Printf("[%d only in b]\n", aoff-boff)
+		} else if boff > aoff {
+			fmt.Printf("[%d only in a]\n", boff-aoff)
+		}
 		a := ra.Fingerprint[aoff:]
 		b := rb.Fingerprint[boff:]
 		var i, ncmp, nbits int
@@ -166,6 +171,11 @@ func doCompare(pa, pb string, opts *scanOptions, fps *fpcalcSettings, interval i
 		}
 		if ncmp > 0 {
 			fmt.Printf("%4d: %0.3f\n", i, float64(nbits)/float64(32*ncmp))
+		}
+		if na, nb := len(a), len(b); na > nb {
+			fmt.Printf("[%d only in a]\n", na-nb)
+		} else if nb > na {
+			fmt.Printf("[%d only in b]\n", nb-na)
 		}
 	}
 	return 0
