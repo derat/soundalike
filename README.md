@@ -97,8 +97,9 @@ Hedgehogs_Dilemma.mp3  2.55 MB  167.35 sec
 ```
 
 Add `-compare-interval 100` to instruct `-compare` to print a score after
-comparing every 100 fingerprint values instead of printing an overall score
-(which can help determine where differences between two songs occur):
+comparing every 100 value pairs within the two fingerprints instead of printing
+an overall score. This can help approximate the point at which differences
+between two songs occur:
 
 ```
 % soundalike -compare -compare-interval 100 instrumental.mp3 vocals.mp3
