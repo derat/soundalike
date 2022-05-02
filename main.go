@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/bits"
 	"os"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ func main() {
 	}
 	compare := flag.Bool("compare", false, `Compare two files given via positional args instead of scanning directory`+
 		"\n(increases -fpcalc-length by default)")
+	compareInterval := flag.Int("compare-interval", 0, `Score interval for -compare (0 to print overall score)`)
 	dbPath := flag.String("db", "", `SQLite database file for storing file info (temp file if unset)`)
 	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Regular expression for audio files")
 	flag.IntVar(&fps.algorithm, "fpcalc-algorithm", fps.algorithm, `Fingerprint algorithm`)
@@ -32,7 +34,8 @@ func main() {
 	flag.IntVar(&opts.logSec, "log-sec", opts.logSec, `Logging frequency in seconds (0 or negative to disable logging)`)
 	flag.Float64Var(&opts.lookupThresh, "lookup-threshold", opts.lookupThresh, `Threshold for lookup table in (0.0, 1.0]`)
 	flag.Float64Var(&opts.matchThresh, "match-threshold", opts.matchThresh, `Threshold for bitwise comparisons in (0.0, 1.0]`)
-	flag.BoolVar(&opts.matchMinLength, "match-min-length", opts.matchMinLength, `Use shorter fingerprint length when scoring bitwise comparisons`)
+	flag.BoolVar(&opts.matchMinLength, "match-min-length", opts.matchMinLength,
+		`Use shorter fingerprint length when scoring bitwise comparisons`)
 	printFileInfo := flag.Bool("print-file-info", true, `Print file sizes and durations`)
 	printFullPaths := flag.Bool("print-full-paths", false, `Print absolute file paths (rather than relative to dir)`)
 	flag.BoolVar(&opts.skipBadFiles, "skip-bad-files", opts.skipBadFiles, `Skip files that can't be fingerprinted by fpcalc`)
@@ -69,7 +72,7 @@ func main() {
 			if !flagWasSet("fpcalc-length") {
 				fps.length = 7200
 			}
-			return doCompare(flag.Arg(0), flag.Arg(1), opts, fps)
+			return doCompare(flag.Arg(0), flag.Arg(1), opts, fps, *compareInterval)
 		}
 
 		if *dbPath == "" {
@@ -134,7 +137,7 @@ func flagWasSet(name string) bool {
 }
 
 // doCompare compares the files at pa and pb on behalf of the -compare flag.
-func doCompare(pa, pb string, opts *scanOptions, fps *fpcalcSettings) int {
+func doCompare(pa, pb string, opts *scanOptions, fps *fpcalcSettings, interval int) int {
 	ra, err := runFpcalc(pa, fps)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed fingerprinting %v: %v\n", pa, err)
@@ -145,8 +148,26 @@ func doCompare(pa, pb string, opts *scanOptions, fps *fpcalcSettings) int {
 		fmt.Fprintf(os.Stderr, "Failed fingerprinting %v: %v\n", pb, err)
 		return 1
 	}
-	score := compareFingerprints(ra.Fingerprint, rb.Fingerprint, opts.matchMinLength)
-	fmt.Printf("%0.3f\n", score)
+	score, aoff, boff := compareFingerprints(ra.Fingerprint, rb.Fingerprint, opts.matchMinLength)
+	if interval <= 0 {
+		fmt.Printf("%0.3f\n", score)
+	} else {
+		a := ra.Fingerprint[aoff:]
+		b := rb.Fingerprint[boff:]
+		var i, ncmp, nbits int
+		for ; i < len(a) && i < len(b); i++ {
+			if i%interval == 0 && ncmp > 0 {
+				fmt.Printf("%4d: %0.3f\n", i, float64(nbits)/float64(32*ncmp))
+				nbits = 0
+				ncmp = 0
+			}
+			nbits += 32 - bits.OnesCount32(a[i]^b[i])
+			ncmp++
+		}
+		if ncmp > 0 {
+			fmt.Printf("%4d: %0.3f\n", i, float64(nbits)/float64(32*ncmp))
+		}
+	}
 	return 0
 }
 

@@ -37,6 +37,8 @@ Find duplicate audio files within a directory.
   -compare
         Compare two files given via positional args instead of scanning directory
         (increases -fpcalc-length by default)
+  -compare-interval int
+        Score interval for -compare (0 to print overall score)
   -db string
         SQLite database file for storing file info (temp file if unset)
   -file-regexp string
@@ -92,6 +94,23 @@ Hedgehogs_Dilemma.mp3  2.55 MB  167.35 sec
   fly_me_to_the_moon_instrumental_version.mp3 \
   Fly_Me_To_The_Moon_Instrumental_2.mp3
 0.202
+```
+
+Add `-compare-interval 100` to instruct `-compare` to print a score after
+comparing every 100 fingerprint values instead of printing an overall score
+(which can help determine where differences between two songs occur):
+
+```
+% soundalike -compare -compare-interval 100 instrumental.mp3 vocals.mp3
+ 100: 0.983
+ 200: 0.984
+ 300: 0.983
+ 400: 0.989
+ 500: 0.819
+ 600: 0.757
+ 700: 0.751
+ 800: 0.753
+...
 ```
 
 The `-match-min-length` flag may be helpful for detecting songs that have been

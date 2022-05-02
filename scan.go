@@ -123,7 +123,7 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			} else if oinfo == nil {
 				return fmt.Errorf("%d not in database", oid)
 			}
-			score := compareFingerprints(info.fprint, oinfo.fprint, opts.matchMinLength)
+			score, _, _ := compareFingerprints(info.fprint, oinfo.fprint, opts.matchMinLength)
 			if score >= opts.matchThresh {
 				edges[info.id] = append(edges[info.id], oid)
 				edges[oid] = append(edges[oid], info.id)
@@ -169,7 +169,11 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 // compareFingerprints returns the ratio of identical bits in a and b to the
 // total bits in the longer (or shorter if minLength is true) of the two.
 // All possible alignments are checked, and the highest ratio is returned.
-func compareFingerprints(a, b []uint32, minLength bool) float64 {
+func compareFingerprints(a, b []uint32, minLength bool) (ratio float64, aoff, boff int) {
+	if len(a) == 0 || len(b) == 0 {
+		return 0, 0, 0
+	}
+
 	count := func(a, b []uint32) int {
 		var cnt int
 		for i := 0; i < len(a) && i < len(b); i++ {
@@ -182,11 +186,13 @@ func compareFingerprints(a, b []uint32, minLength bool) float64 {
 	for i := 1; i < len(a); i++ {
 		if cnt := count(a[i:], b); cnt > best {
 			best = cnt
+			aoff, boff = i, 0
 		}
 	}
 	for i := 1; i < len(b); i++ {
 		if cnt := count(a, b[i:]); cnt > best {
 			best = cnt
+			aoff, boff = 0, i
 		}
 	}
 
@@ -194,7 +200,7 @@ func compareFingerprints(a, b []uint32, minLength bool) float64 {
 	if (minLength && len(b) < total) || (!minLength && len(b) > total) {
 		total = len(b)
 	}
-	return float64(best) / float64(32*total)
+	return float64(best) / float64(32*total), aoff, boff
 }
 
 // components returns all components from the undirected graph described by edges.
