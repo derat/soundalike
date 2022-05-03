@@ -26,6 +26,7 @@ func main() {
 		"\n(increases -fpcalc-length by default)")
 	compareInterval := flag.Int("compare-interval", 0, `Score interval for -compare (0 to print overall score)`)
 	dbPath := flag.String("db", "", `SQLite database file for storing file info (temp file if unset)`)
+	exclude := flag.Bool("exclude", false, `Update database to exclude files in positional args from being grouped together`)
 	flag.StringVar(&opts.fileString, "file-regexp", opts.fileString, "Regular expression for audio files")
 	flag.IntVar(&fps.algorithm, "fpcalc-algorithm", fps.algorithm, `Fingerprint algorithm`)
 	flag.Float64Var(&fps.chunk, "fpcalc-chunk", fps.chunk, `Audio chunk duration in seconds`)
@@ -47,6 +48,15 @@ func main() {
 		if *compare {
 			if flag.NArg() != 2 {
 				flag.Usage()
+				return 2
+			}
+		} else if *exclude {
+			if flag.NArg() < 2 {
+				flag.Usage()
+				return 2
+			}
+			if *dbPath == "" {
+				fmt.Fprintln(os.Stderr, "-exclude requires -db")
 				return 2
 			}
 		} else {
@@ -95,6 +105,19 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Failed closing database:", err)
 			}
 		}()
+
+		if *exclude {
+			// Save all possible pairs within the group.
+			for i := 0; i < flag.NArg()-1; i++ {
+				for j := i + 1; j < flag.NArg(); j++ {
+					if err := db.saveExcludedPair(flag.Arg(i), flag.Arg(j)); err != nil {
+						fmt.Fprintln(os.Stderr, "Failed saving excluded pair:", err)
+						return 1
+					}
+				}
+			}
+			return 0
+		}
 
 		groups, err := scanFiles(opts, db, fps)
 		if err != nil {

@@ -40,17 +40,42 @@ orig/Honey Bee.mp3
 pad/Honey Bee.mp3
 `, "\n")
 
-	cmd := exec.Command(
+	db := filepath.Join(t.TempDir(), "test.db")
+	scanCmd := exec.Command(
 		"soundalike",
+		"-db="+db,
 		"-log-sec=0",
 		"-print-file-info=false",
 		"-fpcalc-length=45",
 		"testdata",
 	)
-	if got, err := cmd.Output(); err != nil {
-		t.Errorf("%s failed: %v", cmd, err)
+	if got, err := scanCmd.Output(); err != nil {
+		t.Errorf("%s failed: %v", scanCmd, err)
 	} else if string(got) != want {
-		t.Errorf("%s printed unexpected output:\n got: %q\n want: %q", cmd, string(got), want)
+		t.Errorf("%s printed unexpected output:\n got: %q\n want: %q", scanCmd, string(got), want)
+	}
+
+	// Exclude the second group.
+	excludeCmd := exec.Command(
+		"soundalike",
+		"-db="+db,
+		"-fpcalc-length=45",
+		"-exclude",
+		"64/Honey Bee.mp3",
+		"orig/Honey Bee.mp3",
+		"pad/Honey Bee.mp3",
+	)
+	if err := excludeCmd.Run(); err != nil {
+		t.Errorf("%s failed: %v", excludeCmd, err)
+	}
+
+	// Do another scan and check that only the first group is printed.
+	want2 := strings.Split(want, "\n\n")[0] + "\n"
+	scanCmd = exec.Command(scanCmd.Args[0], scanCmd.Args[1:]...)
+	if got, err := scanCmd.Output(); err != nil {
+		t.Errorf("%s failed: %v", scanCmd, err)
+	} else if string(got) != want2 {
+		t.Errorf("%s printed unexpected output:\n got: %q\n want: %q", scanCmd, string(got), want2)
 	}
 }
 

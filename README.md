@@ -41,6 +41,8 @@ Find duplicate audio files within a directory.
         Score interval for -compare (0 to print overall score)
   -db string
         SQLite database file for storing file info (temp file if unset)
+  -exclude
+        Update database to exclude files in positional args from being grouped together
   -file-regexp string
         Regular expression for audio files (default "(?i)\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
   -fpcalc-algorithm int
@@ -168,9 +170,11 @@ A much slower system with an Intel Celeron 2955U 1.40GHz processor takes roughly
 When running against a large music collection, the `-db` flag can be passed to
 save fingerprints and other file information for future runs. Note that the
 database will not be reusable if you pass different `-fpcalc-*` flags in the
-future, since those change how `fpcalc` computes fingerprints. When running
-`soundalike` repeatedly, `-skip-new-files` can be used to avoid repeatedly
-trying to fingerprint bad/corrupted files.
+future, since those change how `fpcalc` computes fingerprints.
+
+When running `soundalike` repeatedly, `-skip-new-files` can be used to avoid
+repeatedly trying to fingerprint bad/corrupted files and `-exclude` can be used
+to exclude false positives from future runs.
 
 ## Memory usage
 

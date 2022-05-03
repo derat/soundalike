@@ -123,6 +123,11 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 			} else if oinfo == nil {
 				return fmt.Errorf("%d not in database", oid)
 			}
+			if ok, err := db.isExcludedPair(info.path, oinfo.path); err != nil {
+				return err
+			} else if ok {
+				continue
+			}
 			score, _, _ := compareFingerprints(info.fprint, oinfo.fprint, opts.matchMinLength)
 			if score >= opts.matchThresh {
 				edges[info.id] = append(edges[info.id], oid)
@@ -148,6 +153,7 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 	}
 
 	var groups [][]*fileInfo
+GroupLoop:
 	for _, comp := range components(edges) {
 		group := make([]*fileInfo, len(comp))
 		for i, id := range comp {
@@ -158,6 +164,18 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 				return nil, fmt.Errorf("no info for %d", id)
 			}
 			group[i] = info
+		}
+		// It's possible for a previously-excluded pair to get joined into the same group
+		// by a newly-added song. Throw the whole group out if any of its members were
+		// previously excluded.
+		for i := 0; i < len(group)-1; i++ {
+			for j := i + 1; j < len(group); j++ {
+				if ok, err := db.isExcludedPair(group[i].path, group[j].path); err != nil {
+					return nil, err
+				} else if ok {
+					continue GroupLoop
+				}
+			}
 		}
 		sort.Slice(group, func(i, j int) bool { return group[i].path < group[j].path })
 		groups = append(groups, group)

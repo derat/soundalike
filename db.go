@@ -42,6 +42,10 @@ func newAudioDB(path string, settings *fpcalcSettings) (*audioDB, error) {
 			Duration FLOAT NOT NULL,
 			Size INTEGER NOT NULL,
 			Fingerprint BLOB NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS ExcludedPairs (
+			PathA STRING NOT NULL,
+			PathB STRING NOT NULL,
+			PRIMARY KEY (PathA, PathB))`,
 	} {
 		if _, err = db.Exec(q); err != nil {
 			return nil, err
@@ -133,4 +137,26 @@ func (adb *audioDB) save(info *fileInfo) (id fileID, err error) {
 		return 0, fmt.Errorf("invalid id %v", id64)
 	}
 	return fileID(id64), nil
+}
+
+// saveExcludedPair records that the supplied paths are not duplicates of each other.
+func (adb *audioDB) saveExcludedPair(pa, pb string) error {
+	if pb < pa {
+		pa, pb = pb, pa
+	}
+	_, err := adb.db.Exec(`REPLACE INTO ExcludedPairs (PathA, PathB) VALUES(?, ?)`, pa, pb)
+	return err
+}
+
+// isExcludedPair returns true if the supplied paths have previously been recorded as
+// not being duplicates of each other.
+func (adb *audioDB) isExcludedPair(pa, pb string) (bool, error) {
+	if pb < pa {
+		pa, pb = pb, pa
+	}
+	if rows, err := adb.db.Query(`SELECT * FROM ExcludedPairs WHERE PathA = ? AND PathB = ?`, pa, pb); err != nil {
+		return false, err
+	} else {
+		return rows.Next(), nil
+	}
 }

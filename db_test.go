@@ -87,3 +87,42 @@ func TestAudioDB_Save_Get(t *testing.T) {
 		t.Errorf("get(0, %q) = %+v; want 0 nil", path2, *got)
 	}
 }
+
+func TestAudioDB_ExcludedPairs(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "test.db")
+	settings := defaultFpcalcSettings()
+	db, err := newAudioDB(p, settings)
+	if err != nil {
+		t.Fatal("newAudioDB failed: ", err)
+	}
+
+	const (
+		a = "a.mp3"
+		b = "b.mp3"
+		c = "c.mp3"
+	)
+
+	if ok, err := db.isExcludedPair(a, b); err != nil {
+		t.Fatalf("isExcludedPair(%q, %q) failed: %v", a, b, err)
+	} else if ok {
+		t.Fatalf("isExcludedPair(%q, %q) = %v; want %v", a, b, ok, false)
+	}
+	if err := db.saveExcludedPair(a, b); err != nil {
+		t.Fatalf("saveExcludedPair(%q, %q) failed: %v", a, b, err)
+	}
+	if ok, err := db.isExcludedPair(a, b); err != nil {
+		t.Fatalf("isExcludedPair(%q, %q) failed: %v", a, b, err)
+	} else if !ok {
+		t.Fatalf("isExcludedPair(%q, %q) = %v; want %v", a, b, ok, true)
+	}
+	if ok, err := db.isExcludedPair(b, a); err != nil {
+		t.Fatalf("isExcludedPair(%q, %q) failed: %v", b, a, err)
+	} else if !ok {
+		t.Fatalf("isExcludedPair(%q, %q) = %v; want %v", b, a, ok, true)
+	}
+	if ok, err := db.isExcludedPair(a, c); err != nil {
+		t.Fatalf("isExcludedPair(%q, %q) failed: %v", a, c, err)
+	} else if ok {
+		t.Fatalf("isExcludedPair(%q, %q) = %v; want %v", a, c, ok, false)
+	}
+}
