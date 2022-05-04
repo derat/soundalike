@@ -91,7 +91,7 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 
 		info, err := db.get(0, rel)
 		if err != nil {
-			return err
+			return fmt.Errorf("get %q: %v", rel, err)
 		} else if info == nil {
 			if opts.skipNewFiles {
 				return nil
@@ -113,7 +113,7 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 				fprint:   finfo.Fingerprint,
 			}
 			if info.id, err = db.save(info); err != nil {
-				return err
+				return fmt.Errorf("save %q: %v", rel, err)
 			}
 		}
 
@@ -126,7 +126,7 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 				return fmt.Errorf("%d not in database", oid)
 			}
 			if ok, err := db.isExcludedPair(info.path, oinfo.path); err != nil {
-				return err
+				return fmt.Errorf("check %q and %q: %v", info.path, oinfo.path, err)
 			} else if ok {
 				continue
 			}

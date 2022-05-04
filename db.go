@@ -157,6 +157,7 @@ func (adb *audioDB) isExcludedPair(pa, pb string) (bool, error) {
 	if rows, err := adb.db.Query(`SELECT * FROM ExcludedPairs WHERE PathA = ? AND PathB = ?`, pa, pb); err != nil {
 		return false, err
 	} else {
+		defer rows.Close()
 		return rows.Next(), nil
 	}
 }
