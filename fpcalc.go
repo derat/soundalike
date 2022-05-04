@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -45,6 +46,10 @@ type fpcalcResult struct {
 	Duration    float64  `json:"duration"`
 }
 
+// emptyFingerprintError is returned by runFpcalc when an audio file is too short
+// to be fingerprinted.
+var errEmptyFingerprint = errors.New("empty fingerprint")
+
 // runFpcalc runs fpcalc to compute a fingerprint for path per settings.
 func runFpcalc(path string, settings *fpcalcSettings) (*fpcalcResult, error) {
 	args := []string{
@@ -66,6 +71,9 @@ func runFpcalc(path string, settings *fpcalcSettings) (*fpcalcResult, error) {
 		// Try to get some additional info from stderr.
 		if exit, ok := err.(*exec.ExitError); ok {
 			if stderr := strings.SplitN(string(exit.Stderr), "\n", 2)[0]; stderr != "" {
+				if strings.TrimSpace(stderr) == "ERROR: Empty fingerprint" {
+					return nil, errEmptyFingerprint
+				}
 				err = fmt.Errorf("%v (%v)", err, stderr)
 			}
 		}

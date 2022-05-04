@@ -155,6 +155,12 @@ I've also sometimes seen false positives between tracks that start with silence,
 or between electronic tracks that start with the same chords or with similar
 drumbeats. Passing a higher `-match-threshold` value may prevent some of these.
 
+When running `soundalike` repeatedly with the `-db` flag, `-exclude` can be used
+to specify false positives that should be excluded from future runs.
+
+`fpcalc` isn't able to generate fingerprints for very short files, so they're
+silently skipped. The cutoff seems to be somewhere around 2 to 3 seconds.
+
 ## Performance
 
 Performance is largely dependent on the `-fpcalc-length` flag's value.
@@ -173,8 +179,7 @@ database will not be reusable if you pass different `-fpcalc-*` flags in the
 future, since those change how `fpcalc` computes fingerprints.
 
 When running `soundalike` repeatedly, `-skip-new-files` can be used to avoid
-repeatedly trying to fingerprint bad/corrupted files and `-exclude` can be used
-to exclude false positives from future runs.
+repeatedly trying to fingerprint bad/corrupted files.
 
 ## Memory usage
 

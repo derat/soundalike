@@ -97,7 +97,9 @@ func scanFiles(opts *scanOptions, db *audioDB, fps *fpcalcSettings) ([][]*fileIn
 				return nil
 			}
 			finfo, err := runFpcalc(p, fps)
-			if err != nil {
+			if err == errEmptyFingerprint {
+				return nil // skip short files
+			} else if err != nil {
 				if opts.skipBadFiles {
 					log.Printf("Skipping %v: %v", p, err)
 					return nil
