@@ -9,9 +9,12 @@ import (
 	"io/ioutil"
 	"math/bits"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 )
+
+var buildVersion = "unknown" // injected by create_release.sh
 
 func main() {
 	fps := defaultFpcalcSettings()
@@ -41,9 +44,15 @@ func main() {
 	printFullPaths := flag.Bool("print-full-paths", false, `Print absolute file paths (rather than relative to dir)`)
 	flag.BoolVar(&opts.skipBadFiles, "skip-bad-files", opts.skipBadFiles, `Skip files that can't be fingerprinted by fpcalc`)
 	flag.BoolVar(&opts.skipNewFiles, "skip-new-files", opts.skipNewFiles, `Skip files not already in database given via -db`)
+	printVersion := flag.Bool("version", false, `Print version and exit`)
 	flag.Parse()
 
 	os.Exit(func() int {
+		if *printVersion {
+			doVersion()
+			return 0
+		}
+
 		// Perform some initial checks before creating the database file.
 		if *compare {
 			if flag.NArg() != 2 {
@@ -157,6 +166,17 @@ func flagWasSet(name string) bool {
 		}
 	})
 	return found
+}
+
+// doVersion prints the soundalike and fpcalc versions to stdout.
+func doVersion() {
+	fmt.Printf("soundalike version %v compiled with %v for %v/%v\n",
+		buildVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	if ver, err := getFpcalcVersion(); err != nil {
+		fmt.Printf("Failed getting fpcalc version: %v\n", err)
+	} else {
+		fmt.Println(ver)
+	}
 }
 
 // doCompare compares the files at pa and pb on behalf of the -compare flag.

@@ -35,40 +35,42 @@ Usage: soundalike [flag]... <DIR>
 Find duplicate audio files within a directory.
 
   -compare
-        Compare two files given via positional args instead of scanning directory
-        (increases -fpcalc-length by default)
+    	Compare two files given via positional args instead of scanning directory
+    	(increases -fpcalc-length by default)
   -compare-interval int
-        Score interval for -compare (0 to print overall score)
+    	Score interval for -compare (0 to print overall score)
   -db string
-        SQLite database file for storing file info (temp file if unset)
+    	SQLite database file for storing file info (temp file if unset)
   -exclude
-        Update database to exclude files in positional args from being grouped together
+    	Update database to exclude files in positional args from being grouped together
   -file-regexp string
-        Regular expression for audio files (default "(?i)\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
+    	Regular expression for audio files (default "(?i)\\.(aiff|flac|m4a|mp3|oga|ogg|opus|wav|wma)$")
   -fpcalc-algorithm int
-        Fingerprint algorithm (default 2)
+    	Fingerprint algorithm (default 2)
   -fpcalc-chunk float
-        Audio chunk duration in seconds
+    	Audio chunk duration in seconds
   -fpcalc-length float
-        Max audio duration in seconds to process (default 15)
+    	Max audio duration in seconds to process (default 15)
   -fpcalc-overlap
-        Overlap audio chunks in fingerprints
+    	Overlap audio chunks in fingerprints
   -log-sec int
-        Logging frequency in seconds (0 or negative to disable logging) (default 10)
+    	Logging frequency in seconds (0 or negative to disable logging) (default 10)
   -lookup-threshold float
-        Threshold for lookup table in (0.0, 1.0] (default 0.25)
+    	Threshold for lookup table in (0.0, 1.0] (default 0.25)
   -match-min-length
-        Use shorter fingerprint length when scoring bitwise comparisons
+    	Use shorter fingerprint length when scoring bitwise comparisons
   -match-threshold float
-        Threshold for bitwise comparisons in (0.0, 1.0] (default 0.95)
+    	Threshold for bitwise comparisons in (0.0, 1.0] (default 0.95)
   -print-file-info
-        Print file sizes and durations (default true)
+    	Print file sizes and durations (default true)
   -print-full-paths
-        Print absolute file paths (rather than relative to dir)
+    	Print absolute file paths (rather than relative to dir)
   -skip-bad-files
-        Skip files that can't be fingerprinted by fpcalc (default true)
+    	Skip files that can't be fingerprinted by fpcalc (default true)
   -skip-new-files
-        Skip files not already in database given via -db
+    	Skip files not already in database given via -db
+  -version
+    	Print version and exit
 ```
 
 Example output when scanning a directory:

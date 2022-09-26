@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,21 @@ func (s *fpcalcSettings) String() string {
 func haveFpcalc() bool {
 	_, err := exec.LookPath("fpcalc")
 	return err == nil
+}
+
+// getFpcalcVersion returns a string describing the installed version of fpcalc.
+func getFpcalcVersion() (string, error) {
+	if !haveFpcalc() {
+		return "", errors.New("fpcalc executable not found")
+	}
+	var stderr bytes.Buffer
+	cmd := exec.Command("fpcalc", "-version")
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("%v (%q)", err, strings.Split(stderr.String(), "\n")[0])
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // fpcalcResult contains the result of running fpcalc against a file.
