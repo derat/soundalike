@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-var buildVersion = "unknown" // injected by create_release.sh
+var buildVersion = "non-release" // injected by create_release.sh
 
 func main() {
 	fps := defaultFpcalcSettings()
@@ -175,7 +175,7 @@ func flagWasSet(name string) bool {
 
 // doVersion prints the soundalike and fpcalc versions to stdout.
 func doVersion() {
-	fmt.Printf("soundalike version %v compiled with %v for %v/%v\n",
+	fmt.Printf("soundalike %v compiled with %v for %v/%v\n",
 		buildVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	if ver, err := getFpcalcVersion(); err != nil {
 		fmt.Printf("Failed getting fpcalc version: %v\n", err)
