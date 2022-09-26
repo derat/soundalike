@@ -1,0 +1,15 @@
+steps:
+  - id: build_linux_amd64
+    name: golang
+    entrypoint: bash
+    args: ['-e', '-c', './build/create_release.sh linux amd64']
+
+  - id: build_windows_amd64
+    name: golang
+    entrypoint: bash
+    args: ['-e', '-c', './build/create_release.sh windows amd64']
+
+artifacts:
+  objects:
+    location: gs://${PROJECT_ID}-artifacts/soundalike-release
+    paths: ['soundalike-*.tar.gz', 'soundalike-*.zip']

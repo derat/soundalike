@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/bits"
 	"os"
+	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -81,7 +82,11 @@ func main() {
 		}
 
 		if !haveFpcalc() {
-			fmt.Fprintln(os.Stderr, "fpcalc not in path (install libchromaprint-tools?)")
+			advice := "install from https://github.com/acoustid/chromaprint/releases"
+			if _, err := exec.LookPath("apt"); err == nil {
+				advice = "apt install libchromaprint-tools"
+			}
+			fmt.Fprintf(os.Stderr, "fpcalc not in path (%v)\n", advice)
 			return 1
 		}
 

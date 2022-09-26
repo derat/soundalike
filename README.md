@@ -13,21 +13,34 @@ are made to [AcoustID] or other APIs.
 [Chromaprint]: https://github.com/acoustid/chromaprint
 [AcoustID]: https://acoustid.org/
 
-## Usage
+## Installation
 
-To compile and install the `soundalike` executable, run `go install` from the
-root of this repository. You will need to have [Go] installed.
+You may be able to download a precompiled `soundalike` executable for your
+operating system and architecture from the [Releases page].
+
+[Releases page]: https://github.com/derat/soundalike/releases
+
+Otherwise, to compile and install the `soundalike` executable, run `go install`
+from the root of this repository. You will need to have [Go] installed.
 
 [Go]: https://go.dev/
 
-`fpcalc` must be in your path. On a Debian system, it can be installed by
-running:
+[Chromaprint]'s `fpcalc` program must also be in your path. On a Debian system,
+it can be installed by running:
 
 ```
 sudo apt install libchromaprint-utils
 ```
 
-`soundalike` scans all of the audio files that it finds in the supplied
+Otherwise, you can download the latest [Chromaprint release] for your operating
+system and architecture and place the `fpcalc` or `fpcalc.exe` executable in
+your path (e.g. in `C:\Windows\System32` on Windows).
+
+[Chromaprint release]: https://github.com/acoustid/chromaprint/releases
+
+## Usage
+
+`soundalike` scans all of the audio files that it finds in the specified
 directory and then prints groups of similar files.
 
 ```
@@ -73,7 +86,7 @@ Find duplicate audio files within a directory.
     	Print version and exit
 ```
 
-Example output when scanning a directory:
+Example output when scanning the current directory:
 
 ```
 % soundalike .
