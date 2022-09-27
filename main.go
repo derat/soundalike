@@ -15,15 +15,16 @@ import (
 	"strings"
 )
 
-var buildVersion = "non-release" // injected by create_release.sh
+var buildVersion = "[non-release]" // injected by create_release.sh
 
 func main() {
 	fps := defaultFpcalcSettings()
 	opts := defaultScanOptions()
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %v [flag]... <DIR>\n"+
-			"Find duplicate audio files within a directory.\n\n", os.Args[0])
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: soundalike [flag]... <DIR>")
+		fmt.Fprintln(flag.CommandLine.Output(), "Find duplicate audio files within a directory.")
+		fmt.Fprintln(flag.CommandLine.Output())
 		flag.PrintDefaults()
 	}
 	compare := flag.Bool("compare", false, `Compare two files given via positional args instead of scanning directory`+
@@ -175,7 +176,7 @@ func flagWasSet(name string) bool {
 
 // doVersion prints the soundalike and fpcalc versions to stdout.
 func doVersion() {
-	fmt.Printf("soundalike %v compiled with %v for %v/%v\n",
+	fmt.Printf("soundalike version %v compiled with %v for %v/%v\n",
 		buildVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	if ver, err := getFpcalcVersion(); err != nil {
 		fmt.Printf("Failed getting fpcalc version: %v\n", err)

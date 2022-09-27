@@ -2,14 +2,17 @@
 
 set -x
 
-if [ $# -ne 2 ]; then
-  echo "Usage: $0 <os> <arch>" >&2
+if [ $# -ne 3 ]; then
+  echo "Usage: $0 <os> <arch> <version>" >&2
   exit 2
 fi
 
 export GOOS=$1
 export GOARCH=$2
 export CGO_ENABLED=1
+
+# Strip off the leading 'v' from tag names like 'v0.1'.
+version=${3#v}
 
 # See https://github.com/mattn/go-sqlite3/issues/303.
 if [ "$GOOS" = windows ]; then
@@ -21,12 +24,6 @@ fi
 # outside of the workspace don't persist across build steps.
 if [ -n "$deps" ] && [ "$(id -u)" -eq 0 ]; then
   apt-get update && apt-get install -y $deps
-fi
-
-if git describe --tags >/dev/null 2>&1; then
-  version=$(git describe --tags)
-else
-  version=$(date +%Y%m%d)-$(git rev-parse --short HEAD)
 fi
 
 go build -ldflags "-X main.buildVersion=${version}"

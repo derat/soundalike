@@ -2,12 +2,18 @@ steps:
   - id: build_linux_amd64
     name: golang
     entrypoint: bash
-    args: ['-e', '-c', './build/create_release.sh linux amd64']
+    # Cloud Build substitution variables are severely underdocumented:
+    # https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values
+    # TAG_NAME is apparently always unset when running a trigger manually, but
+    # it seems like you can pass a git tag via the "Commit hash" field and then
+    # access it using any of COMMIT_SHA, SHORT_SHA, or REVISION_ID. There
+    # doesn't seem to be any way to get the actual commit in this case.
+    args: ['-e', '-c', './build/create_release.sh linux amd64 $SHORT_SHA']
 
   - id: build_windows_amd64
     name: golang
     entrypoint: bash
-    args: ['-e', '-c', './build/create_release.sh windows amd64']
+    args: ['-e', '-c', './build/create_release.sh windows amd64 $SHORT_SHA']
 
 artifacts:
   objects:
