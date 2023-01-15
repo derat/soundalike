@@ -29,7 +29,7 @@ from the root of this repository. You will need to have [Go] installed.
 it can be installed by running:
 
 ```
-sudo apt install libchromaprint-utils
+sudo apt install libchromaprint-tools
 ```
 
 Otherwise, you can download the latest [Chromaprint release] for your operating
